@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=2do
+Comment=Simple todo app
+Exec=2do
+Icon=2do
+Terminal=false
+Categories=Office;Utility;
+StartupWMClass=2do

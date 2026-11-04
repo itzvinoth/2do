@@ -1,0 +1,458 @@
+/* App-specific styles on top of Oat. */
+
+:root {
+  --row-height: 2.5rem;
+}
+
+svg.i {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+button.icon.small svg.i {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Priority colours, shared by flags everywhere. */
+.flag {
+  &[data-p=high] { color: var(--danger); }
+  &[data-p=medium] { color: var(--warning); }
+  &[data-p=low] { color: var(--muted-foreground); }
+
+  &:is([data-p=high], [data-p=medium]) svg.i { fill: currentColor; }
+}
+
+.danger {
+  color: var(--danger);
+}
+
+/* Top bar and sidebar. */
+
+[data-topnav] {
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-5);
+    font-weight: var(--font-semibold);
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  button.icon {
+    color: var(--muted-foreground);
+
+    &:hover {
+      color: var(--foreground);
+    }
+  }
+}
+
+[data-sidebar-toggle] {
+  border: 0;
+}
+
+[data-sidebar] {
+  nav {
+    a {
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-full);
+      color: var(--muted-foreground);
+
+      .name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      &[aria-current] {
+        color: var(--foreground);
+        font-weight: var(--font-medium);
+      }
+    }
+  }
+
+  .nav-label {
+    margin: var(--space-5) var(--space-3) var(--space-1);
+    font-size: var(--text-8);
+    font-weight: var(--font-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--faint-foreground);
+  }
+
+  .count {
+    font-size: var(--text-8);
+  }
+
+  .add-row {
+    padding-inline: var(--space-3);
+    margin-block-start: var(--space-1);
+  }
+}
+
+/* Page. */
+
+main {
+  padding: 0;
+}
+
+.page {
+  max-width: 65rem;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-16);
+}
+
+.view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block-end: var(--space-4);
+  padding-inline-start: var(--space-2);
+
+  h1 {
+    margin: 0;
+    font-size: var(--text-2);
+    overflow-wrap: anywhere;
+  }
+
+  select {
+    width: auto;
+    margin: 0;
+    border-color: transparent;
+    color: var(--muted-foreground);
+
+    &:hover {
+      border-color: var(--input);
+    }
+  }
+}
+
+menu[popover] {
+  padding: var(--space-1);
+
+  [role=menuitem] {
+    align-items: center;
+    gap: var(--space-2);
+    border-radius: var(--radius-small);
+  }
+
+  .tick {
+    margin-inline-start: auto;
+    color: var(--foreground);
+  }
+}
+
+/* Task rows: one line each, controls fade in on hover. */
+
+.tasks {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--row-height);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-medium);
+  transition: background-color var(--transition-fast), opacity var(--transition), transform var(--transition);
+
+  &:hover, &:focus-within {
+    background-color: var(--faint);
+  }
+
+  > input[type=checkbox] {
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: text;
+    padding-block: var(--space-2);
+  }
+
+  .title-edit {
+    flex: 1;
+    margin: 0;
+    padding: var(--space-1) var(--space-2);
+    font-size: inherit;
+  }
+
+  .cat, .time {
+    flex-shrink: 0;
+    font-size: var(--text-8);
+    color: var(--muted-foreground);
+  }
+
+  .notes {
+    color: var(--faint-foreground);
+  }
+
+  &.completing {
+    opacity: 0;
+    transform: translateX(0.75rem);
+
+    .title {
+      text-decoration: line-through;
+    }
+  }
+
+  &.done {
+    .title {
+      color: var(--muted-foreground);
+      text-decoration: line-through;
+      text-decoration-color: var(--faint-foreground);
+      cursor: default;
+    }
+
+    .done-mark {
+      display: inline-flex;
+      color: var(--success);
+    }
+
+    .flag {
+      display: inline-flex;
+      width: 1rem;
+    }
+  }
+}
+
+.reveal {
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.task:is(:hover, :focus-within) .reveal,
+.add-row .reveal,
+.reveal:focus-visible,
+.reveal[aria-expanded=true] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .reveal {
+    opacity: 1;
+  }
+}
+
+button.chip {
+  gap: var(--space-1);
+  padding: 0.125rem var(--space-2);
+  font-size: var(--text-8);
+  font-weight: var(--font-medium);
+  background-color: transparent;
+  color: var(--muted-foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+
+  svg.i {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: var(--accent);
+  }
+
+  &.flag[data-p=high] { color: var(--danger); }
+  &.flag[data-p=medium] { color: var(--warning); }
+}
+
+.task button.chip.due:not(.reveal) {
+  border-color: transparent;
+}
+
+.due {
+  &.overdue { color: var(--danger); }
+  &.today { color: var(--warning); }
+}
+
+/* Hidden native date input; its picker is opened by the chip next to it. */
+.due-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+
+  .picker {
+    position: absolute;
+    inset: auto 0 0 auto;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* "+ Add a task" row, below the list. */
+
+.add-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--row-height);
+  padding: 0 var(--space-2);
+  margin-block-start: var(--space-1);
+  color: var(--muted-foreground);
+  border-block: 1px solid transparent;
+  transition: border-color var(--transition-fast);
+
+  &:focus-within {
+    border-color: var(--border);
+    color: var(--foreground);
+  }
+
+  input:not(.picker) {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: var(--space-2) 0;
+    font-size: var(--text-6);
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+
+    &:focus {
+      box-shadow: none;
+    }
+  }
+
+  &.small input:not(.picker) {
+    font-size: var(--text-7);
+  }
+
+  /* Priority, due date and category are secondary: only shown while adding. */
+  .extras {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+  }
+
+  &:focus-within .extras,
+  &:has(#add-title:not(:placeholder-shown)) .extras {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.done-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-6) var(--space-2) 0;
+  font-size: var(--text-7);
+  color: var(--muted-foreground);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--foreground);
+  }
+}
+
+.hint {
+  padding: var(--space-4) var(--space-2);
+  color: var(--muted-foreground);
+}
+
+/* Archive. */
+
+.group {
+  margin-block-end: var(--space-6);
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-1);
+    padding-inline-start: var(--space-2);
+    font-size: var(--text-7);
+    font-weight: var(--font-semibold);
+    color: var(--muted-foreground);
+
+    .count {
+      font-weight: var(--font-normal);
+      color: var(--faint-foreground);
+    }
+  }
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-16) 0;
+  color: var(--faint-foreground);
+
+  svg.i {
+    width: 3rem;
+    height: 3rem;
+    stroke-width: 1.5;
+  }
+}
+
+/* Dialogs and toasts. */
+
+dialog {
+  .dlg-title {
+    margin: 0;
+    padding: var(--space-1) 0;
+    font-size: var(--text-4);
+    font-weight: var(--font-semibold);
+    border: 0;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+
+    &:focus {
+      box-shadow: none;
+      border-bottom-color: var(--border);
+    }
+  }
+
+  .row {
+    --grid-gap: var(--space-3);
+  }
+}
+
+.snack {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--text-7);
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-5) var(--space-3) var(--space-12);
+  }
+
+  .task .cat {
+    display: none;
+  }
+}

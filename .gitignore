@@ -1,0 +1,5 @@
+# Build output
+/2do
+
+# Browser test artifacts
+.playwright-mcp/
