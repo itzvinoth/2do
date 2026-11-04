@@ -6,7 +6,7 @@ It runs as a Linux desktop app or as an installable PWA.
 - Categories: create as many as you need (Personal, Project X, …)
 - Priorities (high, medium, low) and due dates
 - Finished tasks move to the Archive, grouped by the day they were finished. You can reopen them
-- Import and export everything as a Markdown (`.md`) file
+- Import and export everything as a Markdown (`.md`) file ([format](#import-file-format-md))
 
 ## Requirements
 
@@ -111,19 +111,65 @@ it and use the ⋮ menu. Deleting a category also deletes its tasks.
 
 **Import and export.** These are the two icons at the top right.
 
-## Markdown format
+## Import file format (.md)
+
+2do imports and exports plain Markdown, so you can write an import file by hand in any text editor. It's also the
+format 2do uses when you export. To try it, import [`examples/import-sample.md`](examples/import-sample.md).
+
+### Quick example
 
 ```md
 ## Personal
 
-- [ ] Buy milk `priority:high` `due:2026-11-10`
-  > Notes go on indented, quoted lines.
-- [x] Pay rent `priority:medium` `done:2026-11-03T14:20:00.000Z`
+- [ ] Renew passport `priority:high` `due:2026-12-01`
+  > Book an appointment first.
+- [ ] Buy groceries
+- [x] Pay electricity bill `done:2026-11-03T10:30:00.000Z`
+
+## Project Alpha
+
+- [ ] Write the design doc `priority:high` `due:2026-11-15`
+- Review open pull requests
 ```
 
-Import also accepts ordinary Markdown checklists and bullet lists. Missing metadata gets defaults (low priority, no
-due date). **Merge** matches categories by name and skips tasks that already exist. **Replace** discards all current
-data first.
+This creates two categories, **Personal** and **Project Alpha**, with five tasks. The `[x]` task goes straight to the
+archive.
+
+### Rules
+
+| Line | Meaning |
+|---|---|
+| `## Name` | Starts a category called *Name*. A repeated heading continues the same category, ignoring case. Tasks that appear before the first `##` heading go into a category called **Imported**. |
+| `- [ ] Title` | An open task. `*` and `+` bullets work too. |
+| `- [x] Title` | A finished task, which goes to the archive. `[X]` works too. |
+| `- Title` | A plain bullet without a checkbox is imported as an open task. |
+| `  > Some text` | A note for the task above it. Indent it by at least two spaces. Each `>` line is one line of the note. |
+| Anything else | Ignored. This includes `#` and `###` headings, paragraphs and blank lines. |
+
+Nested list items (`  - [ ] …`) are imported as ordinary tasks, not as subtasks.
+
+### Optional metadata
+
+To set metadata, add it at the **end** of the task line, as `` `key:value` `` in backticks, separated by spaces, in
+any order:
+
+| Key | Values | If missing or invalid |
+|---|---|---|
+| `priority` | `high`, `medium` or `low` | `low` |
+| `due` | Date as `YYYY-MM-DD`, for example `2026-12-01` | No due date |
+| `done` | When the task was finished, as an ISO date-time such as `2026-11-03T10:30:00.000Z`. Only used on `[x]` tasks, and it decides which day the task appears under in the archive. | The time of the import |
+| `created` | When the task was created, as an ISO date-time | The time of the import |
+
+### Merge or Replace
+
+After you pick a file, 2do shows how many tasks and categories it found and asks what to do:
+
+- **Merge** adds the tasks to your existing data. Categories with the same name (ignoring case) are combined, and a
+  task is skipped if the same category already has a task with the same title and done state. Importing the same file
+  twice doesn't create duplicates.
+- **Replace** deletes all your current categories and tasks, then loads the file.
+
+If you're not sure which to choose, export first so you have a backup.
 
 ## Command-line options
 

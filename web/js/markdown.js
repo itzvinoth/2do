@@ -48,9 +48,13 @@ export function fromMarkdown(text) {
   let cat = null;
   let last = null;
 
+  // A repeated heading (case-insensitive) continues the same category.
   const category = name => {
-    const c = { id: uid(), name };
-    categories.push(c);
+    let c = categories.find(c => c.name.toLowerCase() === name.toLowerCase());
+    if (!c) {
+      c = { id: uid(), name };
+      categories.push(c);
+    }
     return c;
   };
 

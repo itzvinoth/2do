@@ -72,6 +72,11 @@ button.icon.small svg.i {
   }
 }
 
+/* Oat centres tooltips on their element; keep the right-most one on screen. */
+#btn-export + .ot-tooltip::after {
+  translate: -80% -50%;
+}
+
 [data-sidebar-toggle] {
   border: 0;
 }
