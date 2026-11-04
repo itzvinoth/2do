@@ -114,16 +114,14 @@ function priorityPicker(id, priority, act, withLabel = false) {
     </ot-dropdown>`;
 }
 
-// Due date chip that opens the native date picker. `act` is the change action.
-function duePicker(due, act) {
+// Due date chip. In task rows it opens the details dialog; in the add row it
+// opens the native date picker of the hidden input next to it.
+function dueChip(due, act) {
   return `
-    <span class="due-wrap">
-      <button type="button" class="chip due ${due ? dueState(due) : 'reveal'}" data-act="pick-date"
-        title="${due ? `Due ${parseYmd(due).toDateString()}` : 'Set due date'}">
-        ${icon('calendar')}${due ? `<span>${fmtDue(due)}</span>` : ''}
-      </button>
-      <input type="date" class="picker" data-act="${act}" value="${due || ''}" tabindex="-1" aria-label="Due date">
-    </span>`;
+    <button type="button" class="chip due ${due ? dueState(due) : 'reveal'}" data-act="${act}"
+      title="${due ? `Due ${parseYmd(due).toDateString()}` : 'Set due date'}">
+      ${icon('calendar')}${due ? `<span>${fmtDue(due)}</span>` : ''}
+    </button>`;
 }
 
 function renderTasks(main, catId) {
@@ -162,7 +160,7 @@ function taskRow(t, showCat) {
       <span class="title" data-act="rename" title="Click to edit">${esc(t.title)}</span>
       ${t.notes ? `<button class="ghost icon small notes" data-act="edit" title="${esc(t.notes.slice(0, 200))}">${icon('notes')}</button>` : ''}
       ${showCat ? `<span class="cat">${esc(categoryName(t.categoryId))}</span>` : ''}
-      ${duePicker(t.due, 'set-due')}
+      ${dueChip(t.due, 'edit-due')}
       ${priorityPicker(t.id, t.priority, 'set-priority')}
       <button class="ghost icon small reveal" data-act="edit" title="Details">${icon('pencil')}</button>
       <button class="ghost icon small reveal danger" data-act="delete" title="Delete">${icon('trash')}</button>
@@ -183,7 +181,10 @@ function addRow(catId) {
               <button type="button" role="menuitem" data-act="draft-cat" data-value="${c.id}">${icon('tag')} ${esc(c.name)}</button>`).join('')}
           </menu>
         </ot-dropdown>`}
-        ${duePicker(draft.due, 'draft-due')}
+        <span class="due-wrap">
+          ${dueChip(draft.due, 'pick-date')}
+          <input type="date" class="picker" data-act="draft-due" value="${draft.due || ''}" tabindex="-1" aria-label="Due date">
+        </span>
         ${priorityPicker('new', draft.priority, 'draft-priority', true)}
       </div>
     </form>`;
@@ -304,7 +305,7 @@ function ask({ title, message = '', input = null, buttons }) {
   });
 }
 
-function editTask(id) {
+function editTask(id, focus = 'notes') {
   const t = store.get().tasks.find(t => t.id === id);
   if (!t) return;
 
@@ -329,7 +330,7 @@ function editTask(id) {
     });
   }, { once: true });
   dlg.showModal();
-  f.notes.focus();
+  f[focus].focus();
 }
 
 // Import / export.
@@ -456,10 +457,6 @@ function bind() {
         render();
         break;
 
-      case 'set-due':
-        store.updateTask(id, { due: el.value || null });
-        break;
-
       case 'draft-due':
         draft.due = el.value || null;
         focusAdd = true;
@@ -516,6 +513,10 @@ function bind() {
 
       case 'edit':
         editTask(id);
+        break;
+
+      case 'edit-due':
+        editTask(id, 'due');
         break;
 
       case 'reopen':

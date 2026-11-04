@@ -15,6 +15,23 @@ svg.i {
   stroke-linejoin: round;
 }
 
+button.ghost.icon {
+  color: var(--muted-foreground);
+
+  &:hover:not(:disabled) {
+    background-color: transparent;
+    color: var(--foreground);
+  }
+
+  &.danger:hover:not(:disabled) {
+    color: var(--danger);
+  }
+
+  /* Coloured flags keep their colour, hovered or not. */
+  &.flag[data-p=high], &.flag[data-p=high]:hover:not(:disabled) { color: var(--danger); }
+  &.flag[data-p=medium], &.flag[data-p=medium]:hover:not(:disabled) { color: var(--warning); }
+}
+
 button.icon.small svg.i {
   width: 1rem;
   height: 1rem;
@@ -25,8 +42,6 @@ button.icon.small svg.i {
   &[data-p=high] { color: var(--danger); }
   &[data-p=medium] { color: var(--warning); }
   &[data-p=low] { color: var(--muted-foreground); }
-
-  &:is([data-p=high], [data-p=medium]) svg.i { fill: currentColor; }
 }
 
 .danger {
@@ -141,18 +156,45 @@ main {
   }
 }
 
-menu[popover] {
+ot-dropdown menu[popover] {
+  min-width: 10rem;
   padding: var(--space-1);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-large);
 
   [role=menuitem] {
     align-items: center;
-    gap: var(--space-2);
-    border-radius: var(--radius-small);
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    font-weight: var(--font-normal);
+    background-color: transparent;
+    color: var(--foreground);
+    border: 0;
+    border-radius: var(--radius-medium);
+
+    &:hover:not(:disabled), &:focus {
+      background-color: var(--muted);
+    }
+
+    &:active:not(:disabled) {
+      transform: none;
+    }
+
+    &.danger, &.danger svg.i {
+      color: var(--danger);
+    }
+
+    svg.i {
+      color: var(--muted-foreground);
+    }
+
+    &[data-p=high] svg.i { color: var(--danger); }
+    &[data-p=medium] svg.i { color: var(--warning); }
   }
 
   .tick {
+    display: inline-flex;
     margin-inline-start: auto;
-    color: var(--foreground);
   }
 }
 
@@ -170,7 +212,7 @@ menu[popover] {
   gap: var(--space-2);
   min-height: var(--row-height);
   padding: 0 var(--space-2);
-  border-radius: var(--radius-medium);
+  border-bottom: 1px solid var(--border);
   transition: background-color var(--transition-fast), opacity var(--transition), transform var(--transition);
 
   &:hover, &:focus-within {
@@ -272,7 +314,9 @@ button.chip {
   }
 
   &:hover:not(:disabled) {
-    background-color: var(--accent);
+    background-color: transparent;
+    border-color: var(--ring);
+    color: var(--foreground);
   }
 
   &.flag[data-p=high] { color: var(--danger); }
@@ -317,7 +361,7 @@ button.chip {
   padding: 0 var(--space-2);
   margin-block-start: var(--space-1);
   color: var(--muted-foreground);
-  border-block: 1px solid transparent;
+  border-bottom: 1px solid transparent;
   transition: border-color var(--transition-fast);
 
   &:focus-within {

@@ -95,7 +95,7 @@ Press **Esc** to clear the input.
 |---|---|
 | Rename | Click the title, edit it, then press Enter (or Esc to cancel) |
 | Change priority | Click the flag. Red is high, amber is medium, and low shows no flag |
-| Change due date | Click the date. Overdue dates turn red and today's turn amber. Use the picker's *Clear* to remove a date |
+| Change due date | Click the date (or the calendar icon) to open the task dialog with the date selected. Overdue dates turn red and today's turn amber |
 | Notes, or move to another category | Pencil icon |
 | Delete | Trash icon |
 
