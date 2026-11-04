@@ -2,6 +2,7 @@
 
 :root {
   --row-height: 2.5rem;
+  --indent: 1.75rem;
 }
 
 svg.i {
@@ -216,7 +217,7 @@ ot-dropdown menu[popover] {
   align-items: center;
   gap: var(--space-2);
   min-height: var(--row-height);
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-2) 0 calc(var(--space-2) + var(--depth, 0) * var(--indent));
   border-bottom: 1px solid var(--border);
   transition: background-color var(--transition-fast), opacity var(--transition), transform var(--transition);
 
@@ -239,6 +240,13 @@ ot-dropdown menu[popover] {
     padding-block: var(--space-2);
   }
 
+  .title code {
+    padding: 0.05em 0.35em;
+    font-size: 0.875em;
+    background-color: var(--muted);
+    border-radius: var(--radius-small);
+  }
+
   .title-edit {
     flex: 1;
     margin: 0;
@@ -254,6 +262,38 @@ ot-dropdown menu[popover] {
 
   .notes {
     color: var(--faint-foreground);
+  }
+
+  /* Subtasks: indented by --depth, slightly smaller, lighter divider. */
+  &.sub {
+    min-height: 2.25rem;
+    border-bottom-color: color-mix(in srgb, var(--border) 50%, transparent);
+
+    .title {
+      font-size: var(--text-7);
+    }
+  }
+
+  /* A ticked subtask stays in place, struck through. */
+  &.checked > .title {
+    color: var(--muted-foreground);
+    text-decoration: line-through;
+    text-decoration-color: var(--faint-foreground);
+  }
+
+  &.sub-add {
+    color: var(--muted-foreground);
+
+    input {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+      padding: var(--space-1) 0;
+      font-size: var(--text-7);
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+    }
   }
 
   &.completing {
@@ -276,6 +316,10 @@ ot-dropdown menu[popover] {
     .done-mark {
       display: inline-flex;
       color: var(--success);
+
+      &.open {
+        color: var(--faint-foreground);
+      }
     }
 
     .flag {
@@ -328,8 +372,17 @@ button.chip {
   &.flag[data-p=medium] { color: var(--warning); }
 }
 
-.task button.chip.due:not(.reveal) {
+.task button.chip:is(.due:not(.reveal), .progress) {
   border-color: transparent;
+}
+
+/* "2/5" subtask progress; click to collapse or expand. */
+button.chip.progress {
+  flex-shrink: 0;
+
+  &.all-done {
+    color: var(--success);
+  }
 }
 
 .due {
@@ -503,5 +556,9 @@ dialog {
 
   .task .cat {
     display: none;
+  }
+
+  :root {
+    --indent: 1.25rem;
   }
 }

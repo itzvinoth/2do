@@ -10,6 +10,8 @@ const PRIORITY = {
 };
 
 const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+// Task titles are plain text, except that `backticks` render as inline code.
+const fmtTitle = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
 const icon = name => `<svg class="i" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
 // Dates. Due dates are local YYYY-MM-DD strings.
@@ -51,9 +53,14 @@ function route() {
   return { view: 'all' };
 }
 
-// The task being typed in the add row. Kept across re-renders.
+// The task being typed in the add row, and the inline subtask input
+// ({parentId, title}). Kept across re-renders.
 const draft = { title: '', priority: 'low', due: null, categoryId: null };
-let focusAdd = true;
+let subDraft = null;
+
+// Element to focus, or task to start renaming, after the next render.
+let focusId = 'add-title';
+let renameId = null;
 let archiveFilter = '';
 
 function render() {
@@ -64,19 +71,25 @@ function render() {
   if (r.view === 'archive') renderArchive(main);
   else renderTasks(main, r.view === 'category' ? r.id : null);
 
-  if (focusAdd) {
-    $('#add-title')?.focus();
-    focusAdd = false;
+  if (focusId) {
+    document.getElementById(focusId)?.focus();
+    focusId = null;
+  }
+  if (renameId) {
+    const span = $(`.task[data-id="${renameId}"] .title`);
+    renameId = null;
+    if (span) startRename(span);
   }
 }
 
 function renderSidebar() {
   const { categories, tasks } = store.get();
-  const open = tasks.filter(t => !t.completedAt);
+  const roots = tasks.filter(t => !t.parentId);
+  const open = roots.filter(t => !t.completedAt);
   const r = route();
 
   $('#count-all').textContent = open.length || '';
-  $('#count-archive').textContent = (tasks.length - open.length) || '';
+  $('#count-archive').textContent = (roots.length - open.length) || '';
 
   $('#nav-categories').innerHTML = categories.map(c => {
     const n = open.filter(t => t.categoryId === c.id).length;
@@ -94,6 +107,14 @@ function sortOpen(a, b) {
     || (a.due || '9999').localeCompare(b.due || '9999')
     || a.createdAt.localeCompare(b.createdAt);
 }
+
+// Open top-level tasks shown in a view, in display order.
+const rootsFor = catId => store.get().tasks
+  .filter(t => !t.parentId && !t.completedAt && (!catId || t.categoryId === catId)).sort(sortOpen);
+
+// Subtasks of a task: open ones by priority, then finished ones.
+const childrenOf = id => store.get().tasks.filter(t => t.parentId === id)
+  .sort((a, b) => !!a.completedAt - !!b.completedAt || sortOpen(a, b));
 
 const categoryName = id => store.get().categories.find(c => c.id === id)?.name ?? '?';
 
@@ -126,8 +147,8 @@ function dueChip(due, act) {
 
 function renderTasks(main, catId) {
   const { categories, tasks } = store.get();
-  const list = tasks.filter(t => !t.completedAt && (!catId || t.categoryId === catId)).sort(sortOpen);
-  const nDone = tasks.filter(t => t.completedAt && (!catId || t.categoryId === catId)).length;
+  const list = rootsFor(catId);
+  const nDone = tasks.filter(t => !t.parentId && t.completedAt && (!catId || t.categoryId === catId)).length;
 
   if (!categories.some(c => c.id === draft.categoryId)) draft.categoryId = categories[0]?.id ?? null;
 
@@ -145,7 +166,7 @@ function renderTasks(main, catId) {
         </ot-dropdown>` : ''}
       </div>
 
-      <ul class="tasks">${list.map(t => taskRow(t, !catId)).join('')}</ul>
+      <ul class="tasks">${list.map(t => taskTree(t, 0, !catId)).join('')}</ul>
 
       ${categories.length ? addRow(catId) : `<p class="hint">Create a category in the sidebar to start adding tasks.</p>`}
 
@@ -153,17 +174,44 @@ function renderTasks(main, catId) {
     </div>`;
 }
 
-function taskRow(t, showCat) {
+// A task row followed by its subtasks (unless collapsed) and, when open, the
+// inline "Add a subtask" input.
+function taskTree(t, depth, showCat) {
+  let html = taskRow(t, depth, showCat);
+  if (!t.collapsed) html += childrenOf(t.id).map(c => taskTree(c, depth + 1, false)).join('');
+  if (subDraft?.parentId === t.id) html += subAddRow(depth + 1);
+  return html;
+}
+
+function taskRow(t, depth, showCat) {
+  const subs = store.descendants(t.id);
+  const nDone = subs.filter(s => s.completedAt).length;
+
   return `
-    <li class="task" data-id="${t.id}">
-      <input type="checkbox" data-act="complete" aria-label="Mark as done">
-      <span class="title" data-act="rename" title="Click to edit">${esc(t.title)}</span>
+    <li class="task ${depth ? 'sub' : ''} ${t.completedAt ? 'checked' : ''}" data-id="${t.id}" style="--depth: ${depth}">
+      <input type="checkbox" data-act="complete" ${t.completedAt ? 'checked' : ''} aria-label="Mark as done">
+      <span class="title" data-act="rename" title="Click to edit">${fmtTitle(t.title)}</span>
+      ${subs.length ? `
+      <button class="chip progress ${nDone === subs.length ? 'all-done' : ''}" data-act="toggle"
+        title="${t.collapsed ? 'Show' : 'Hide'} subtasks" aria-expanded="${!t.collapsed}">
+        ${icon(t.collapsed ? 'chevron-right' : 'chevron-down')}<span>${nDone}/${subs.length}</span>
+      </button>` : ''}
       ${t.notes ? `<button class="ghost icon small notes" data-act="edit" title="${esc(t.notes.slice(0, 200))}">${icon('notes')}</button>` : ''}
       ${showCat ? `<span class="cat">${esc(categoryName(t.categoryId))}</span>` : ''}
       ${dueChip(t.due, 'edit-due')}
       ${priorityPicker(t.id, t.priority, 'set-priority')}
+      <button class="ghost icon small reveal" data-act="add-sub" title="Add subtask">${icon('list-plus')}</button>
       <button class="ghost icon small reveal" data-act="edit" title="Details">${icon('pencil')}</button>
       <button class="ghost icon small reveal danger" data-act="delete" title="Delete">${icon('trash')}</button>
+    </li>`;
+}
+
+function subAddRow(depth) {
+  return `
+    <li class="task sub sub-add" style="--depth: ${depth}">
+      ${icon('plus')}
+      <input id="sub-title" placeholder="Add a subtask" maxlength="500" value="${esc(subDraft.title)}"
+        autocomplete="off" aria-label="New subtask">
     </li>`;
 }
 
@@ -194,7 +242,7 @@ function renderArchive(main) {
   const { categories, tasks } = store.get();
   if (archiveFilter && !categories.some(c => c.id === archiveFilter)) archiveFilter = '';
 
-  const done = tasks.filter(t => t.completedAt && (!archiveFilter || t.categoryId === archiveFilter))
+  const done = tasks.filter(t => !t.parentId && t.completedAt && (!archiveFilter || t.categoryId === archiveFilter))
     .sort((a, b) => b.completedAt.localeCompare(a.completedAt));
 
   // Group by the local date on which the task was finished.
@@ -217,7 +265,7 @@ function renderArchive(main) {
       ${done.length ? [...groups].map(([day, list]) => `
         <section class="group">
           <h2>${fmtDay(parseYmd(day))} <span class="count">${list.length}</span></h2>
-          <ul class="tasks">${list.map(archiveRow).join('')}</ul>
+          <ul class="tasks">${list.map(t => archiveRow(t) + archiveSubs(t.id, 1)).join('')}</ul>
         </section>`).join('')
         : `<div class="empty">${icon('archive')}<p>Finished tasks show up here.</p></div>`}
     </div>`;
@@ -231,7 +279,7 @@ function archiveRow(t) {
   return `
     <li class="task done" data-id="${t.id}">
       <span class="done-mark">${icon('check')}</span>
-      <span class="title" title="${esc(info.join('\n'))}">${esc(t.title)}</span>
+      <span class="title" title="${esc(info.join('\n'))}">${fmtTitle(t.title)}</span>
       ${t.notes ? `<span class="notes" title="${esc(t.notes.slice(0, 200))}">${icon('notes')}</span>` : ''}
       <span class="cat">${esc(categoryName(t.categoryId))}</span>
       <span class="flag" data-p="${t.priority}" title="Priority: ${PRIORITY[t.priority].label}">${t.priority === 'low' ? '' : icon('flag')}</span>
@@ -241,7 +289,16 @@ function archiveRow(t) {
     </li>`;
 }
 
-// Inline title editing. Enter or blur saves, Escape cancels.
+function archiveSubs(id, depth) {
+  return childrenOf(id).map(t => `
+    <li class="task done sub" style="--depth: ${depth}">
+      <span class="done-mark ${t.completedAt ? '' : 'open'}">${icon(t.completedAt ? 'check' : 'circle')}</span>
+      <span class="title">${fmtTitle(t.title)}</span>
+    </li>${archiveSubs(t.id, depth + 1)}`).join('');
+}
+
+// Inline title editing. Enter or blur saves, Escape cancels. Tab makes the
+// task a subtask of the one above it, Shift+Tab moves it up a level.
 function startRename(span) {
   const id = span.closest('.task').dataset.id;
   const t = store.get().tasks.find(t => t.id === id);
@@ -265,6 +322,24 @@ function startRename(span) {
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') finish(true);
     if (e.key === 'Escape') finish(false);
+    if (e.key !== 'Tab') return;
+
+    e.preventDefault();
+    let parentId;
+    if (e.shiftKey) {
+      if (!t.parentId) return finish(true);
+      parentId = store.find(t.parentId).parentId || null;
+    } else {
+      const siblings = t.parentId ? childrenOf(t.parentId) : rootsFor(route().id);
+      const prev = siblings[siblings.findIndex(s => s.id === id) - 1];
+      if (!prev) return finish(true);
+      parentId = prev.id;
+    }
+
+    // Keep editing the same task after it moves.
+    done = true;
+    renameId = id;
+    if (!store.setParent(id, parentId, { title: input.value.trim() || t.title })) render();
   });
   input.addEventListener('blur', () => finish(true));
 }
@@ -317,6 +392,7 @@ function editTask(id, focus = 'notes') {
   f.notes.value = t.notes;
   f.priority.value = t.priority;
   f.due.value = t.due || '';
+  f.categoryId.closest('label').hidden = !!t.parentId;
 
   dlg.returnValue = '';
   dlg.addEventListener('close', () => {
@@ -370,9 +446,11 @@ async function importMarkdown(file) {
     return;
   }
 
+  const nSub = data.tasks.filter(t => t.parentId).length;
   const { action } = await ask({
     title: `Import ${file.name}?`,
-    message: `Found ${data.tasks.length} task(s) in ${data.categories.length} categor${data.categories.length === 1 ? 'y' : 'ies'}. ` +
+    message: `Found ${data.tasks.length - nSub} task(s)${nSub ? ` and ${nSub} subtask(s)` : ''} in ` +
+      `${data.categories.length} categor${data.categories.length === 1 ? 'y' : 'ies'}. ` +
       'Merge adds them to your existing tasks. Replace deletes everything you have first.',
     buttons: [
       { label: 'Replace', value: 'replace', variant: 'danger', cls: 'outline' },
@@ -399,8 +477,18 @@ function addFromDraft() {
 
   store.addTask({ title, priority: draft.priority, due: draft.due, categoryId: catId });
   Object.assign(draft, { title: '', priority: 'low', due: null });
-  focusAdd = true;
+  focusId = 'add-title';
   render();
+}
+
+function addSubFromDraft() {
+  const title = subDraft.title.trim();
+  const parent = store.find(subDraft.parentId);
+  if (!title || !parent) return;
+
+  subDraft.title = '';
+  focusId = 'sub-title';
+  store.addTask({ title, parentId: parent.id, categoryId: parent.categoryId });
 }
 
 function bind() {
@@ -408,7 +496,8 @@ function bind() {
     // Close the sidebar overlay on mobile after navigating.
     $('[data-sidebar-layout]').removeAttribute('data-sidebar-open');
     draft.title = '';
-    focusAdd = true;
+    subDraft = null;
+    focusId = 'add-title';
     render();
   });
 
@@ -433,16 +522,40 @@ function bind() {
 
   main.addEventListener('input', e => {
     if (e.target.id === 'add-title') draft.title = e.target.value;
+    if (e.target.id === 'sub-title') subDraft.title = e.target.value;
   });
 
   main.addEventListener('keydown', e => {
-    if (e.target.id !== 'add-title') return;
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addFromDraft();
-    } else if (e.key === 'Escape') {
-      draft.title = e.target.value = '';
+    if (e.target.id === 'add-title') {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addFromDraft();
+      } else if (e.key === 'Escape') {
+        draft.title = e.target.value = '';
+      }
     }
+
+    if (e.target.id === 'sub-title') {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addSubFromDraft();
+      } else if (e.key === 'Escape') {
+        subDraft = null;
+        render();
+      }
+    }
+  });
+
+  // Close an empty subtask input when focus leaves it (but not when a
+  // re-render just recreated and refocused it).
+  main.addEventListener('focusout', e => {
+    if (e.target.id !== 'sub-title') return;
+    setTimeout(() => {
+      if (subDraft && !subDraft.title.trim() && document.activeElement?.id !== 'sub-title') {
+        subDraft = null;
+        render();
+      }
+    });
   });
 
   main.addEventListener('submit', e => e.preventDefault());
@@ -459,17 +572,23 @@ function bind() {
 
       case 'draft-due':
         draft.due = el.value || null;
-        focusAdd = true;
+        focusId = 'add-title';
         render();
         break;
 
       case 'complete': {
-        const li = el.closest('.task');
-        li.classList.add('completing');
-        setTimeout(() => {
+        // Subtasks stay in place when ticked; top-level tasks move to the archive.
+        if (!el.checked) {
+          store.reopenTask(id);
+        } else if (store.find(id).parentId) {
           store.completeTask(id);
-          toastAction('Task finished.', 'Undo', () => store.reopenTask(id));
-        }, 300);
+        } else {
+          el.closest('.task').classList.add('completing');
+          setTimeout(() => {
+            const ids = store.completeTask(id);
+            toastAction('Task finished.', 'Undo', () => store.reopenMany(ids));
+          }, 300);
+        }
         break;
       }
     }
@@ -507,7 +626,7 @@ function bind() {
       case 'draft-priority':
       case 'draft-cat':
         draft[el.dataset.act === 'draft-cat' ? 'categoryId' : 'priority'] = el.dataset.value;
-        focusAdd = true;
+        focusId = 'add-title';
         render();
         break;
 
@@ -519,15 +638,28 @@ function bind() {
         editTask(id, 'due');
         break;
 
+      case 'toggle':
+        store.updateTask(id, { collapsed: !store.find(id).collapsed });
+        break;
+
+      case 'add-sub':
+        subDraft = { parentId: id, title: '' };
+        focusId = 'sub-title';
+        if (store.find(id).collapsed) store.updateTask(id, { collapsed: false });
+        else render();
+        break;
+
       case 'reopen':
         store.reopenTask(id);
         toastAction('Task reopened.', 'Undo', () => store.completeTask(id));
         break;
 
       case 'delete': {
-        const t = store.get().tasks.find(t => t.id === id);
+        const t = store.find(id);
+        const n = store.descendants(id).length;
         const { action } = await ask({
-          title: 'Delete task?', message: `"${t.title}" will be permanently deleted.`,
+          title: 'Delete task?',
+          message: `"${t.title}"${n ? ` and its ${n} subtask(s)` : ''} will be permanently deleted.`,
           buttons: [{ label: 'Delete', value: 'ok', variant: 'danger' }],
         });
         if (action === 'ok') store.deleteTask(id);

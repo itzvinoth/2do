@@ -5,6 +5,7 @@ It runs as a Linux desktop app or as an installable PWA.
 
 - Categories: create as many as you need (Personal, Project X, …)
 - Priorities (high, medium, low) and due dates
+- Subtasks, nested as deep as you like
 - Finished tasks move to the Archive, grouped by the day they were finished. You can reopen them
 - Import and export everything as a Markdown (`.md`) file ([format](#import-file-format-md))
 
@@ -99,9 +100,23 @@ Press **Esc** to clear the input.
 | Notes, or move to another category | Pencil icon |
 | Delete | Trash icon |
 
-Tasks are sorted by priority, then by due date.
+Tasks are sorted by priority, then by due date. `` `Backticks` `` in a title are shown as inline code.
 
-**Finishing and reopening.** Tick the checkbox to finish a task. It moves to the **Archive**, and the snackbar offers
+**Subtasks.** Hover over a task and click the add-subtask icon (lines with a +). Type the subtask and press Enter. The
+input stays open, so you can add several in a row. Press Esc when you're done.
+
+| Action | How |
+|---|---|
+| Collapse or expand subtasks | Click the `2/5` progress chip next to the parent task |
+| Make a task a subtask of the one above it | Click its title to rename it, then press **Tab** |
+| Move a subtask up a level | Click its title, then press **Shift+Tab** |
+| Finish a subtask | Tick it. It stays under its parent, struck through, and the progress chip updates |
+| Reopen a subtask | Untick it. This also reopens its parent if the parent was finished |
+
+Subtasks always belong to their top-level task's category. Moving a task to another category moves its subtasks too.
+
+**Finishing and reopening.** Tick the checkbox to finish a task. A top-level task moves to the **Archive** together
+with its subtasks, and any open subtasks are finished with it. The snackbar offers
 **Undo**. The archive groups tasks by the day you finished them (Today, Yesterday, then dates). Hover over a title to
 see the exact finish, creation and due times. Use the reopen icon to bring a task back. Click **N finished** under a
 category's list to see that category's archive.
@@ -129,11 +144,13 @@ format 2do uses when you export. To try it, import [`examples/import-sample.md`]
 ## Project Alpha
 
 - [ ] Write the design doc `priority:high` `due:2026-11-15`
+  - [ ] Outline the API
+  - [x] Collect requirements
 - Review open pull requests
 ```
 
-This creates two categories, **Personal** and **Project Alpha**, with five tasks. The `[x]` task goes straight to the
-archive.
+This creates two categories, **Personal** and **Project Alpha**. Project Alpha's design doc task gets two subtasks.
+The finished `[x]` top-level task goes straight to the archive; the finished subtask stays under its parent.
 
 ### Rules
 
@@ -143,10 +160,11 @@ archive.
 | `- [ ] Title` | An open task. `*` and `+` bullets work too. |
 | `- [x] Title` | A finished task, which goes to the archive. `[X]` works too. |
 | `- Title` | A plain bullet without a checkbox is imported as an open task. |
+| `  - [ ] Title` | A subtask of the task above it with less indentation. Indent each level by two spaces (or a tab); nest as deep as you like. |
 | `  > Some text` | A note for the task above it. Indent it by at least two spaces. Each `>` line is one line of the note. |
 | Anything else | Ignored. This includes `#` and `###` headings, paragraphs and blank lines. |
 
-Nested list items (`  - [ ] …`) are imported as ordinary tasks, not as subtasks.
+See [`examples/tasks-1.md`](examples/tasks-1.md) for a real-world file with subtasks nested three levels deep.
 
 ### Optional metadata
 
@@ -165,7 +183,8 @@ any order:
 After you pick a file, 2do shows how many tasks and categories it found and asks what to do:
 
 - **Merge** adds the tasks to your existing data. Categories with the same name (ignoring case) are combined, and a
-  task is skipped if the same category already has a task with the same title and done state. Importing the same file
+  task is skipped if the same category already has a task with the same title, parent and done state. Subtasks of a
+  skipped task are merged under the existing one. Importing the same file
   twice doesn't create duplicates.
 - **Replace** deletes all your current categories and tasks, then loads the file.
 

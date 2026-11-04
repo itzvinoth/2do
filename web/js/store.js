@@ -102,10 +102,12 @@ export function deleteCategory(id) {
   commit();
 }
 
-// Tasks.
+// Tasks. A task with a parentId is a subtask; subtasks always share their
+// root task's category.
 export function addTask(t) {
   state.tasks.push({
     id: uid(),
+    parentId: t.parentId || null,
     title: t.title,
     notes: t.notes || '',
     priority: t.priority || 'low',
@@ -117,25 +119,73 @@ export function addTask(t) {
   commit();
 }
 
+export const find = id => state.tasks.find(t => t.id === id);
+
+export function descendants(id) {
+  const out = [];
+  for (const t of state.tasks) {
+    if (t.parentId === id) out.push(t, ...descendants(t.id));
+  }
+  return out;
+}
+
 export function updateTask(id, fields) {
-  const t = state.tasks.find(t => t.id === id);
-  if (t) Object.assign(t, fields);
+  const t = find(id);
+  if (!t) return;
+  Object.assign(t, fields);
+  if (fields.categoryId) descendants(id).forEach(d => d.categoryId = fields.categoryId);
   commit();
 }
 
 export function deleteTask(id) {
-  state.tasks = state.tasks.filter(t => t.id !== id);
+  const gone = new Set([id, ...descendants(id).map(t => t.id)]);
+  state.tasks = state.tasks.filter(t => !gone.has(t.id));
   commit();
 }
 
-export const completeTask = id => updateTask(id, { completedAt: new Date().toISOString() });
-export const reopenTask = id => updateTask(id, { completedAt: null });
+// Finishing a task also finishes its open subtasks. Returns the ids that
+// changed, for undo.
+export function completeTask(id) {
+  const now = new Date().toISOString();
+  const changed = [find(id), ...descendants(id)].filter(t => t && !t.completedAt);
+  changed.forEach(t => t.completedAt = now);
+  commit();
+  return changed.map(t => t.id);
+}
+
+// Reopening a task also reopens its finished parents, so it's visible again.
+export function reopenTask(id) {
+  for (let t = find(id); t; t = find(t.parentId)) t.completedAt = null;
+  commit();
+}
+
+export function reopenMany(ids) {
+  ids.forEach(id => { const t = find(id); if (t) t.completedAt = null; });
+  commit();
+}
+
+// Move a task under a new parent (or to the top level with null), optionally
+// updating other fields at the same time. Returns false if the move is invalid.
+export function setParent(id, parentId, fields = {}) {
+  const t = find(id);
+  if (!t || parentId === id || descendants(id).some(d => d.id === parentId)) return false;
+  Object.assign(t, fields);
+  t.parentId = parentId;
+  if (parentId) {
+    const p = find(parentId);
+    p.collapsed = false;
+    [t, ...descendants(id)].forEach(d => d.categoryId = p.categoryId);
+  }
+  commit();
+  return true;
+}
 
 // Merge imported data: categories are matched by name, and tasks that already
-// exist (same category, title and done state) are skipped.
+// exist (same category, parent, title and done state) are skipped. A skipped
+// task's subtasks are merged under the existing task.
 export function merge(incoming) {
   const byName = new Map(state.categories.map(c => [c.name.toLowerCase(), c]));
-  const idMap = new Map();
+  const catMap = new Map();
 
   for (const c of incoming.categories) {
     let ex = byName.get(c.name.toLowerCase());
@@ -144,17 +194,30 @@ export function merge(incoming) {
       state.categories.push(ex);
       byName.set(c.name.toLowerCase(), ex);
     }
-    idMap.set(c.id, ex.id);
+    catMap.set(c.id, ex.id);
   }
 
-  const key = t => `${t.categoryId}\n${t.title}\n${!!t.completedAt}`;
-  const seen = new Set(state.tasks.map(key));
+  const key = t => `${t.categoryId}\n${t.parentId || ''}\n${t.title}\n${!!t.completedAt}`;
+  const existing = new Map(state.tasks.map(t => [key(t), t.id]));
+  const taskMap = new Map();
 
+  // Incoming tasks are ordered parents-first, so parent ids are already mapped.
   let added = 0;
   for (const t of incoming.tasks) {
-    const task = { ...t, id: uid(), categoryId: idMap.get(t.categoryId) };
-    if (seen.has(key(task))) continue;
-    seen.add(key(task));
+    const task = {
+      ...t,
+      id: uid(),
+      categoryId: catMap.get(t.categoryId),
+      parentId: t.parentId ? taskMap.get(t.parentId) : null,
+    };
+
+    const dup = existing.get(key(task));
+    if (dup) {
+      taskMap.set(t.id, dup);
+      continue;
+    }
+    existing.set(key(task), task.id);
+    taskMap.set(t.id, task.id);
     state.tasks.push(task);
     added++;
   }
