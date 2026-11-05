@@ -129,7 +129,7 @@ category's list to see that category's archive.
 **Categories.** Type a name in **New category** in the sidebar and press Enter. To rename or delete a category, open
 it and use the ⋮ menu. Deleting a category also deletes its tasks.
 
-**Import and export.** These are the two icons at the top right.
+**Import and export.** These are the two icons at the top right: the arrow pointing down into a tray imports a `.md` file, and the arrow pointing up out of a tray exports one. Hover over either to see its label.
 
 ## Import file format (.md)
 
