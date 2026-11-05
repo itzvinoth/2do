@@ -102,8 +102,13 @@ function renderSidebar() {
   });
 }
 
+// A task you've started and not finished yet.
+const inProgress = t => !!t.startedAt && !t.completedAt;
+
+// In-progress tasks first, then by priority, due date and age.
 function sortOpen(a, b) {
-  return PRIORITY[a.priority].rank - PRIORITY[b.priority].rank
+  return inProgress(b) - inProgress(a)
+    || PRIORITY[a.priority].rank - PRIORITY[b.priority].rank
     || (a.due || '9999').localeCompare(b.due || '9999')
     || a.createdAt.localeCompare(b.createdAt);
 }
@@ -188,9 +193,10 @@ function taskRow(t, depth, showCat) {
   const nDone = subs.filter(s => s.completedAt).length;
 
   return `
-    <li class="task ${depth ? 'sub' : ''} ${t.completedAt ? 'checked' : ''}" data-id="${t.id}" style="--depth: ${depth}">
+    <li class="task ${depth ? 'sub' : ''} ${t.completedAt ? 'checked' : ''} ${inProgress(t) ? 'active' : ''}" data-id="${t.id}" style="--depth: ${depth}">
       <input type="checkbox" data-act="complete" ${t.completedAt ? 'checked' : ''} aria-label="Mark as done">
       <span class="title" data-act="rename" title="Click to edit">${fmtTitle(t.title)}</span>
+      ${inProgress(t) ? `<span class="status" title="Started ${new Date(t.startedAt).toLocaleString()}"><span class="dot"></span>In progress</span>` : ''}
       ${subs.length ? `
       <button class="chip progress ${nDone === subs.length ? 'all-done' : ''}" data-act="toggle"
         title="${t.collapsed ? 'Show' : 'Hide'} subtasks" aria-expanded="${!t.collapsed}">
@@ -200,6 +206,8 @@ function taskRow(t, depth, showCat) {
       ${showCat ? `<span class="cat">${esc(categoryName(t.categoryId))}</span>` : ''}
       ${dueChip(t.due, 'edit-due')}
       ${priorityPicker(t.id, t.priority, 'set-priority')}
+      ${t.completedAt ? '' : `
+      <button class="ghost icon small reveal" data-act="progress" title="${inProgress(t) ? 'Stop progress' : 'Start progress'}">${icon(inProgress(t) ? 'pause' : 'play')}</button>`}
       <button class="ghost icon small reveal" data-act="add-sub" title="Add subtask">${icon('list-plus')}</button>
       <button class="ghost icon small reveal" data-act="edit" title="Details">${icon('pencil')}</button>
       <button class="ghost icon small reveal danger" data-act="delete" title="Delete">${icon('trash')}</button>
@@ -273,7 +281,9 @@ function renderArchive(main) {
 
 function archiveRow(t) {
   const fin = new Date(t.completedAt);
-  const info = [`Finished ${fin.toLocaleString()}`, `Created ${new Date(t.createdAt).toLocaleString()}`];
+  const info = [`Finished ${fin.toLocaleString()}`];
+  if (t.startedAt) info.push(`Started ${new Date(t.startedAt).toLocaleString()}`);
+  info.push(`Created ${new Date(t.createdAt).toLocaleString()}`);
   if (t.due) info.push(`Was due ${parseYmd(t.due).toDateString()}`);
 
   return `
@@ -640,6 +650,10 @@ function bind() {
 
       case 'toggle':
         store.updateTask(id, { collapsed: !store.find(id).collapsed });
+        break;
+
+      case 'progress':
+        store.updateTask(id, { startedAt: inProgress(store.find(id)) ? null : new Date().toISOString() });
         break;
 
       case 'add-sub':

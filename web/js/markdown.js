@@ -8,13 +8,16 @@
 //   - [ ] Buy milk `priority:high` `due:2026-11-10`
 //     > Optional notes, indented and quoted.
 //     - [ ] Check the fridge first
+//   - [ ] Fix the tap `started:2026-11-04T09:00:00.000Z`
 //   - [x] Pay rent `priority:medium` `done:2026-11-03T14:20:00.000Z`
+//
+// On import, `- [/] Title` also marks a task as in progress.
 
 import { PRIORITIES, uid } from './store.js';
 
-const KEYS = ['priority', 'due', 'done', 'created'];
+const KEYS = ['priority', 'due', 'started', 'done', 'created'];
 const reToken = new RegExp(`\\s+\`(${KEYS.join('|')}):([^\`\\s]+)\`$`);
-const reTask = /^[-*+]\s+(?:\[([ xX])\]\s+)?(.+)$/;
+const reTask = /^[-*+]\s+(?:\[([ xX/])\]\s+)?(.+)$/;
 const reDate = /^\d{4}-\d{2}-\d{2}$/;
 
 export function toMarkdown({ categories, tasks }) {
@@ -28,6 +31,7 @@ export function toMarkdown({ categories, tasks }) {
     const pad = '  '.repeat(depth);
     let line = `${pad}- [${t.completedAt ? 'x' : ' '}] ${t.title.replace(/\n/g, ' ')} \`priority:${t.priority}\``;
     if (t.due) line += ` \`due:${t.due}\``;
+    if (t.startedAt) line += ` \`started:${t.startedAt}\``;
     if (t.completedAt) line += ` \`done:${t.completedAt}\``;
     if (t.createdAt) line += ` \`created:${t.createdAt}\``;
     out.push(line);
@@ -105,7 +109,7 @@ export function fromMarkdown(text) {
     while (stack.length && stack.at(-1).indent >= indent) stack.pop();
     const parent = stack.at(-1)?.task ?? null;
 
-    const done = m[1] && m[1] !== ' ';
+    const done = m[1] === 'x' || m[1] === 'X';
     cat ??= category('Imported');
 
     last = {
@@ -116,6 +120,7 @@ export function fromMarkdown(text) {
       priority: PRIORITIES.includes(meta.priority) ? meta.priority : 'low',
       due: reDate.test(meta.due || '') ? meta.due : null,
       categoryId: cat.id,
+      startedAt: validISO(meta.started) || (m[1] === '/' ? new Date().toISOString() : null),
       createdAt: validISO(meta.created) || new Date().toISOString(),
       completedAt: done ? (validISO(meta.done) || new Date().toISOString()) : null,
     };

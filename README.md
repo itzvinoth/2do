@@ -6,6 +6,7 @@ It runs as a Linux desktop app or as an installable PWA.
 - Categories: create as many as you need (Personal, Project X, …)
 - Priorities (high, medium, low) and due dates
 - Subtasks, nested as deep as you like
+- Mark tasks you've started as **In progress**
 - Finished tasks move to the Archive, grouped by the day they were finished. You can reopen them
 - Import and export everything as a Markdown (`.md`) file ([format](#import-file-format-md))
 
@@ -98,12 +99,13 @@ Press **Esc** to clear the input.
 | Action | How |
 |---|---|
 | Rename | Click the title, edit it, then press Enter (or Esc to cancel) |
+| Mark as in progress | Click the ▶ icon. The task gets a blue **In progress** chip and moves to the top of its list. Click ⏸ to stop. Hover over the chip to see when you started |
 | Change priority | Click the flag. Red is high, amber is medium, and low shows no flag |
 | Change due date | Click the date (or the calendar icon) to open the task dialog with the date selected. Overdue dates turn red and today's turn amber |
 | Notes, or move to another category | Pencil icon |
 | Delete | Trash icon |
 
-Tasks are sorted by priority, then by due date. `` `Backticks` `` in a title are shown as inline code.
+Tasks are sorted with in-progress tasks first, then by priority, then by due date. `` `Backticks` `` in a title are shown as inline code.
 
 **Subtasks.** Hover over a task and click the add-subtask icon (lines with a +). Type the subtask and press Enter. The
 input stays open, so you can add several in a row. Press Esc when you're done.
@@ -162,6 +164,7 @@ The finished `[x]` top-level task goes straight to the archive; the finished sub
 | `## Name` | Starts a category called *Name*. A repeated heading continues the same category, ignoring case. Tasks that appear before the first `##` heading go into a category called **Imported**. |
 | `- [ ] Title` | An open task. `*` and `+` bullets work too. |
 | `- [x] Title` | A finished task, which goes to the archive. `[X]` works too. |
+| `- [/] Title` | An in-progress task (the convention used by Obsidian and other apps). 2do exports these as `- [ ]` with a `started` tag instead, so the file still renders as a normal checklist elsewhere. |
 | `- Title` | A plain bullet without a checkbox is imported as an open task. |
 | `  - [ ] Title` | A subtask of the task above it with less indentation. Indent each level by two spaces (or a tab); nest as deep as you like. |
 | `  > Some text` | A note for the task above it. Indent it by at least two spaces. Each `>` line is one line of the note. |
@@ -178,6 +181,7 @@ any order:
 |---|---|---|
 | `priority` | `high`, `medium` or `low` | `low` |
 | `due` | Date as `YYYY-MM-DD`, for example `2026-12-01` | No due date |
+| `started` | When you started the task, as an ISO date-time. Marks the task as in progress | Not in progress (unless the line uses `[/]`) |
 | `done` | When the task was finished, as an ISO date-time such as `2026-11-03T10:30:00.000Z`. Only used on `[x]` tasks, and it decides which day the task appears under in the archive. | The time of the import |
 | `created` | When the task was created, as an ISO date-time | The time of the import |
 

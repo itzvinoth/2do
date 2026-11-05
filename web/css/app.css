@@ -3,6 +3,7 @@
 :root {
   --row-height: 2.5rem;
   --indent: 1.75rem;
+  --progress: light-dark(#2563eb, #60a5fa);
 }
 
 svg.i {
@@ -271,6 +272,32 @@ ot-dropdown menu[popover] {
 
     .title {
       font-size: var(--text-7);
+    }
+  }
+
+  /* In progress: a blue bar on the left edge and a status chip. */
+  &.active {
+    box-shadow: inset 2px 0 0 var(--progress);
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+    padding: 0.125rem var(--space-2);
+    font-size: var(--text-8);
+    font-weight: var(--font-medium);
+    color: var(--progress);
+    border: 1px solid color-mix(in srgb, var(--progress) 35%, transparent);
+    border-radius: var(--radius-full);
+
+    .dot {
+      width: 0.4rem;
+      height: 0.4rem;
+      border-radius: var(--radius-full);
+      background-color: var(--progress);
+      animation: pulse 2s ease-in-out infinite;
     }
   }
 
@@ -560,5 +587,15 @@ dialog {
 
   :root {
     --indent: 1.25rem;
+  }
+}
+
+@keyframes pulse {
+  50% { opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task .status .dot {
+    animation: none;
   }
 }
