@@ -5,5 +5,5 @@ Comment=Simple todo app
 Exec=2do
 Icon=2do
 Terminal=false
-Categories=Office;Utility;
+Categories=Office;ProjectManagement;
 StartupWMClass=2do

@@ -1,22 +1,45 @@
 BIN := 2do
-PREFIX ?= $(HOME)/.local
+VERSION ?= 0.1.0
+ARCHES := amd64 arm64
+MAINTAINER ?= $(shell git config user.name) <$(shell git config user.email)>
 
-.PHONY: build run install uninstall
+LDFLAGS := -s -w -X main.version=$(VERSION)
+GOBUILD := CGO_ENABLED=0 go build -trimpath -ldflags="$(LDFLAGS)"
+
+.PHONY: build run install uninstall dist
 
 # Static binary with the web app embedded; runs on any Linux distro.
 build:
-	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o $(BIN) .
+	$(GOBUILD) -o $(BIN) .
 
 run: build
 	./$(BIN)
 
 # Installs for the current user (no root): binary, icon and launcher entry.
 install: build
-	install -Dm755 $(BIN) $(PREFIX)/bin/$(BIN)
-	install -Dm644 web/icons/icon.svg $(PREFIX)/share/icons/hicolor/scalable/apps/2do.svg
-	install -Dm644 packaging/2do.desktop $(PREFIX)/share/applications/2do.desktop
-	sed -i "s|^Exec=.*|Exec=$(PREFIX)/bin/$(BIN)|" $(PREFIX)/share/applications/2do.desktop
+	./$(BIN) install
 
-# Removes only the installed program files, not your data in ~/.local/share/2do.
-uninstall:
-	rm -f $(PREFIX)/bin/$(BIN) $(PREFIX)/share/icons/hicolor/scalable/apps/2do.svg $(PREFIX)/share/applications/2do.desktop
+# Removes the installed program files, not your tasks in ~/.local/share/2do.
+uninstall: build
+	./$(BIN) uninstall
+
+# Release files in dist/, for each architecture:
+#   2do-linux-<arch>          self-installing binary for any distro
+#   2do_<version>_<arch>.deb  package for Debian, Ubuntu, Mint, Pop!_OS, ...
+# plus SHA256SUMS.
+dist: $(foreach a,$(ARCHES),dist/$(BIN)-linux-$(a) dist/$(BIN)_$(VERSION)_$(a).deb)
+	cd dist && sha256sum $(BIN)-linux-* $(BIN)_$(VERSION)_*.deb > SHA256SUMS
+
+dist/$(BIN)-linux-%: FORCE
+	GOARCH=$* $(GOBUILD) -o $@ .
+
+dist/$(BIN)_$(VERSION)_%.deb: dist/$(BIN)-linux-%
+	install -Dm755 $< build/deb-$*/usr/bin/$(BIN)
+	install -Dm644 packaging/2do.desktop build/deb-$*/usr/share/applications/2do.desktop
+	install -Dm644 web/icons/icon.svg build/deb-$*/usr/share/icons/hicolor/scalable/apps/2do.svg
+	install -d build/deb-$*/DEBIAN
+	sed -e 's/@VERSION@/$(VERSION)/' -e 's/@ARCH@/$*/' -e 's/@MAINTAINER@/$(MAINTAINER)/' \
+		packaging/deb-control > build/deb-$*/DEBIAN/control
+	dpkg-deb --root-owner-group -Zxz --build build/deb-$* $@
+
+FORCE:

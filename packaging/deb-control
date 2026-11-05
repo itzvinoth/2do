@@ -1,0 +1,11 @@
+Package: 2do
+Version: @VERSION@
+Architecture: @ARCH@
+Maintainer: @MAINTAINER@
+Section: utils
+Priority: optional
+Suggests: chromium | chromium-browser | google-chrome-stable
+Description: Simple, offline-first todo app
+ Categories, priorities, due dates, subtasks and an archive of finished
+ tasks, with Markdown import and export. Opens in its own window using a
+ Chromium-based browser if one is installed, otherwise the default browser.

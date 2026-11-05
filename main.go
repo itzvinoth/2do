@@ -29,10 +29,37 @@ var webFS embed.FS
 
 const maxBody = 10 << 20
 
+// version is set at build time with -ldflags "-X main.version=...".
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "install", "uninstall":
+			run := install
+			if os.Args[1] == "uninstall" {
+				run = uninstall
+			}
+			if err := run(); err != nil {
+				log.Fatalf("%s failed: %v", os.Args[1], err)
+			}
+			return
+		}
+	}
+
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "2do %s\n\nUsage:\n  2do [flags]     start the app\n  2do install     install for this user (app menu entry, no root)\n  2do uninstall   remove the installed app (your tasks are kept)\n\nFlags:\n", version)
+		flag.PrintDefaults()
+	}
 	port := flag.Int("port", 47823, "localhost port to serve on")
 	noWindow := flag.Bool("no-window", false, "only run the server, don't open a window")
+	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(version)
+		return
+	}
 
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
 	url := "http://" + addr + "/"

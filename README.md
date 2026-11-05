@@ -9,74 +9,77 @@ It runs as a Linux desktop app or as an installable PWA.
 - Finished tasks move to the Archive, grouped by the day they were finished. You can reopen them
 - Import and export everything as a Markdown (`.md`) file ([format](#import-file-format-md))
 
-## Requirements
+## Install
 
-| To | You need |
-|---|---|
-| Run | Any 64-bit Linux distro. A Chromium-based browser (Chrome, Chromium, Brave, Edge or Vivaldi) gives you a standalone app window. Without one, 2do opens in your default browser. |
-| Build | [Go](https://go.dev/dl/) 1.24 or newer, and `make` |
+Download the file for your system from the project's **Releases** page. If you're not sure which one you need, run
+`uname -m`: `x86_64` means **amd64** and `aarch64` means **arm64**.
 
-The built binary is fully static. It has no runtime dependencies, so it doesn't need GTK, WebKit or Node.
+### Ubuntu, Debian, Linux Mint, Pop!_OS and other Debian-based distros
 
-## Install (this laptop)
-
-```sh
-make install
-```
-
-This builds `./2do` and installs it for your user only, without root:
-
-- `~/.local/bin/2do`: the program
-- `~/.local/share/applications/2do.desktop`: the launcher entry (search "2do" in your app menu)
-- `~/.local/share/icons/hicolor/scalable/apps/2do.svg`: the icon
-
-Start it from the app menu or by running `2do`. Closing the window quits the app.
-
-To remove it, run `make uninstall`. This keeps your data. To delete your data too, remove `~/.local/share/2do`
-(and `~/.config/2do`, which holds the app window's browser profile).
-
-## Use it on other laptops
-
-### 1. Get the program onto the other laptop
-
-**Option A: build there.** Copy this project folder (or clone it), then run `make install`.
-
-**Option B: copy the binary.** The other laptop doesn't need Go. Build on this laptop:
+Download `2do_<version>_amd64.deb`, then double-click it. It opens in your Software or App Center app; click
+**Install**. You can also install it from a terminal:
 
 ```sh
-make build                           # for x86_64 laptops
-GOARCH=arm64 make build              # for ARM laptops (check with `uname -m` on the target)
+sudo apt install ./2do_0.1.0_amd64.deb
 ```
 
-Then copy these three files to the other laptop: `2do`, `packaging/2do.desktop` and `web/icons/icon.svg`. On the other
-laptop, from the folder you copied them to, run:
+- **Update:** install the newer `.deb` the same way.
+- **Uninstall:** remove it from the Software app, or run `sudo apt remove 2do`.
+
+### Fedora, Arch, openSUSE and any other distro
+
+Download `2do-linux-amd64`, then run these from the folder you downloaded it to:
 
 ```sh
-install -Dm755 2do ~/.local/bin/2do
-install -Dm644 icon.svg ~/.local/share/icons/hicolor/scalable/apps/2do.svg
-install -Dm644 2do.desktop ~/.local/share/applications/2do.desktop
-sed -i "s|^Exec=.*|Exec=$HOME/.local/bin/2do|" ~/.local/share/applications/2do.desktop
+chmod +x 2do-linux-amd64
+./2do-linux-amd64 install
 ```
 
-### 2. Bring your tasks along
+This installs 2do for your user only, without root. It puts the program in `~/.local/bin/2do`, adds an app menu
+entry and icon, and doesn't change anything else on your system. You can delete the downloaded file afterwards.
 
-Use either of these:
+- **Update:** download the newer file and run `install` again.
+- **Uninstall:** run `2do uninstall`.
 
-- **Markdown:** on the old laptop, click the export icon (top right) to save a `.md` file. On the new laptop, click
-  the import icon, pick that file and choose **Replace** (or **Merge** to add to what's already there).
-- **Data file:** close 2do on both laptops, then copy `~/.local/share/2do/data.json` from the old laptop to the same
-  place on the new one. This keeps everything exactly, including the archive history.
+### Check the download (optional)
+
+Each release includes a `SHA256SUMS` file. Put it in the same folder as your download, then run:
+
+```sh
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+It should print `OK` next to your file.
+
+## Start 2do
+
+Open your app menu and search for **2do**, or run `2do` in a terminal. Closing the window quits the app.
+
+2do opens in its own window if a Chromium-based browser is installed (Chrome, Chromium, Brave, Edge or Vivaldi).
+Without one, it opens in your default browser. The program itself is a single static file with no other
+dependencies, so it doesn't need GTK, WebKit or Node.
+
+## Your data
+
+Your tasks are saved in `~/.local/share/2do/data.json`. Uninstalling never deletes this file, and you can back it up
+like any other file. To delete your data completely, remove `~/.local/share/2do` and `~/.config/2do` (the app
+window's browser profile).
+
+**Moving to another computer.** Install 2do there, then use either of these:
+
+- **Markdown:** on the old computer, click the export icon (top right) to save a `.md` file. On the new one, click the
+  import icon, pick that file and choose **Replace**.
+- **Data file:** close 2do on both computers, then copy `~/.local/share/2do/data.json` to the same place on the new
+  one. This keeps everything exactly, including the archive history.
 
 There is no built-in sync. If you keep `data.json` in a synced folder (for example with Syncthing or Nextcloud,
-through a symlink), only run 2do on one laptop at a time. Otherwise the last laptop to save overwrites the other's
+through a symlink), only run 2do on one computer at a time. Otherwise the last one to save overwrites the other's
 changes.
 
-### 3. Or use it as a PWA (any device)
-
-The `web/` folder is a self-contained static site. Serve it over HTTPS from any static host your organisation approves,
-open it in Chrome or Edge, and choose **Install app** in the address bar. It then works offline. In this mode, your
-tasks are stored in that browser's local storage, separate from the desktop app's data file, so export to `.md` now
-and then as a backup.
+**PWA (browser-only) use.** The `web/` folder is a self-contained static site. Serve it over HTTPS from any static
+host your organisation approves, open it in Chrome or Edge, and choose **Install app** in the address bar. It then
+works offline. In this mode, your tasks are stored in that browser's local storage, separate from the desktop app's
+data file, so export to `.md` now and then as a backup.
 
 ## How to use
 
@@ -193,8 +196,11 @@ If you're not sure which to choose, export first so you have a backup.
 ## Command-line options
 
 ```
+2do install         # install for your user (app menu entry, no root)
+2do uninstall       # remove the installed app; your tasks are kept
 2do -port 47823     # localhost port (default 47823)
 2do -no-window      # only run the server; open http://127.0.0.1:47823 yourself
+2do -version        # print the version
 ```
 
 If you start 2do while it's already running, it opens another window to the running instance.
@@ -205,7 +211,36 @@ If you start 2do while it's already running, it opens another window to the runn
   aren't detected. Install one natively, or keep using the tab. In that case, press Ctrl+C in the terminal to quit.
 - **"error listening on 127.0.0.1:47823":** another program is using that port. Run `2do -port 47900` (or any free
   port). Your data is unaffected because it lives in the data file, not in the browser.
-- **Changes don't show after upgrading:** reload the window with Ctrl+Shift+R.
+- **Changes don't show after upgrading:** close every 2do window so the old version stops, then start 2do again. If
+  it still looks old, reload the window with Ctrl+Shift+R.
+- **2do doesn't appear in the app menu right after installing:** log out and back in. Some desktops only re-read the
+  menu at login.
+
+## Building from source
+
+You need [Go](https://go.dev/dl/) 1.24 or newer, and `make`.
+
+| Command | What it does |
+|---|---|
+| `make run` | Build and start 2do |
+| `make install` | Build and install for your user (same as `2do install`) |
+| `make uninstall` | Remove the installed copy (same as `2do uninstall`) |
+| `make dist` | Build the release files in `dist/` |
+
+`make dist` builds, for both amd64 and arm64:
+
+- `2do-linux-<arch>`, the self-installing binary
+- `2do_<version>_<arch>.deb`, the Debian package (needs `dpkg-deb`, which Debian-based distros already have)
+- `SHA256SUMS`
+
+Set the version with `make dist VERSION=0.2.0`. The package's maintainer field comes from your `git config` name and
+email; override it with `MAINTAINER="Your Name <you@example.com>"`.
+
+To publish a release, upload everything in `dist/` to a new release on the repository's Releases page, for example
+with GitHub CLI: `gh release create v0.1.0 dist/*`.
+
+The web app in `web/` is embedded into the binary when it's built, so rebuild (`make run`) after changing any file
+there.
 
 ## Security notes
 
