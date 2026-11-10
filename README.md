@@ -30,7 +30,7 @@ Download `2do_<version>_amd64.deb`, then double-click it. It opens in your Softw
 **Install**. You can also install it from a terminal:
 
 ```sh
-sudo apt install ./2do_0.1.0_amd64.deb
+sudo apt install ./2do_0.2.0_amd64.deb
 ```
 
 - **Update:** install the newer `.deb` the same way.
@@ -257,7 +257,7 @@ Set the version with `make dist VERSION=0.2.0`. The package's maintainer field c
 email; override it with `MAINTAINER="Your Name <you@example.com>"`.
 
 To publish a release, upload everything in `dist/` to a new release on the repository's Releases page, for example
-with GitHub CLI: `gh release create v0.1.0 dist/*`.
+with GitHub CLI: `gh release create v0.2.0 dist/*`.
 
 The web app in `web/` is embedded into the binary when it's built, so rebuild (`make run`) after changing any file
 there.
