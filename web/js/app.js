@@ -1,5 +1,6 @@
 import * as store from './store.js';
-import { toMarkdown, fromMarkdown } from './markdown.js';
+import { toMarkdown, fromMarkdown, taskToMarkdown, categoryToMarkdown } from './markdown.js';
+import { mdToHtml, htmlToMd, setupEditor } from './editor.js';
 
 const $ = (sel, el = document) => el.querySelector(sel);
 
@@ -62,6 +63,9 @@ let subDraft = null;
 let focusId = 'add-title';
 let renameId = null;
 let archiveFilter = '';
+
+// Whether a task list shows its finished tasks below it.
+let showDone = false;
 
 function render() {
   renderSidebar();
@@ -153,7 +157,7 @@ function dueChip(due, act) {
 function renderTasks(main, catId) {
   const { categories, tasks } = store.get();
   const list = rootsFor(catId);
-  const nDone = tasks.filter(t => !t.parentId && t.completedAt && (!catId || t.categoryId === catId)).length;
+  const done = finishedRoots(catId);
 
   if (!categories.some(c => c.id === draft.categoryId)) draft.categoryId = categories[0]?.id ?? null;
 
@@ -165,6 +169,7 @@ function renderTasks(main, catId) {
         <ot-dropdown>
           <button class="ghost icon" popovertarget="cat-menu" title="Category options">${icon('more')}</button>
           <menu popover id="cat-menu">
+            <button role="menuitem" data-act="copy-cat">${icon('copy')} Copy as Markdown</button>
             <button role="menuitem" data-act="rename-cat">${icon('pencil')} Rename</button>
             <button role="menuitem" data-act="delete-cat" class="danger">${icon('trash')} Delete</button>
           </menu>
@@ -175,7 +180,11 @@ function renderTasks(main, catId) {
 
       ${categories.length ? addRow(catId) : `<p class="hint">Create a category in the sidebar to start adding tasks.</p>`}
 
-      ${nDone ? `<a class="done-link" href="#/archive" data-cat="${catId || ''}">${icon('check')} ${nDone} finished</a>` : ''}
+      ${done.length ? `
+      <button class="done-link" data-act="toggle-done" aria-expanded="${showDone}">
+        ${icon(showDone ? 'chevron-down' : 'chevron-right')} ${done.length} finished
+      </button>
+      ${showDone ? doneGroups(done, !catId) : ''}` : ''}
     </div>`;
 }
 
@@ -209,6 +218,7 @@ function taskRow(t, depth, showCat) {
       ${t.completedAt ? '' : `
       <button class="ghost icon small reveal" data-act="progress" title="${inProgress(t) ? 'Stop progress' : 'Start progress'}">${icon(inProgress(t) ? 'pause' : 'play')}</button>`}
       <button class="ghost icon small reveal" data-act="add-sub" title="Add subtask">${icon('list-plus')}</button>
+      <button class="ghost icon small reveal" data-act="copy" title="Copy as Markdown">${icon('copy')}</button>
       <button class="ghost icon small reveal" data-act="edit" title="Details">${icon('pencil')}</button>
       <button class="ghost icon small reveal danger" data-act="delete" title="Delete">${icon('trash')}</button>
     </li>`;
@@ -250,16 +260,7 @@ function renderArchive(main) {
   const { categories, tasks } = store.get();
   if (archiveFilter && !categories.some(c => c.id === archiveFilter)) archiveFilter = '';
 
-  const done = tasks.filter(t => !t.parentId && t.completedAt && (!archiveFilter || t.categoryId === archiveFilter))
-    .sort((a, b) => b.completedAt.localeCompare(a.completedAt));
-
-  // Group by the local date on which the task was finished.
-  const groups = new Map();
-  for (const t of done) {
-    const key = ymd(new Date(t.completedAt));
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(t);
-  }
+  const done = finishedRoots(archiveFilter);
 
   main.innerHTML = `
     <div class="page">
@@ -270,16 +271,32 @@ function renderArchive(main) {
           ${categories.map(c => `<option value="${c.id}" ${c.id === archiveFilter ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
         </select>
       </div>
-      ${done.length ? [...groups].map(([day, list]) => `
-        <section class="group">
-          <h2>${fmtDay(parseYmd(day))} <span class="count">${list.length}</span></h2>
-          <ul class="tasks">${list.map(t => archiveRow(t) + archiveSubs(t.id, 1)).join('')}</ul>
-        </section>`).join('')
+      ${done.length ? doneGroups(done, true)
         : `<div class="empty">${icon('archive')}<p>Finished tasks show up here.</p></div>`}
     </div>`;
 }
 
-function archiveRow(t) {
+// Finished top-level tasks, most recent first.
+const finishedRoots = catId => store.get().tasks
+  .filter(t => !t.parentId && t.completedAt && (!catId || t.categoryId === catId))
+  .sort((a, b) => b.completedAt.localeCompare(a.completedAt));
+
+// Finished tasks grouped by the local date on which they were finished.
+function doneGroups(done, showCat) {
+  const groups = new Map();
+  for (const t of done) {
+    const key = ymd(new Date(t.completedAt));
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(t);
+  }
+  return [...groups].map(([day, list]) => `
+    <section class="group">
+      <h2>${fmtDay(parseYmd(day))} <span class="count">${list.length}</span></h2>
+      <ul class="tasks">${list.map(t => archiveRow(t, showCat) + archiveSubs(t.id, 1)).join('')}</ul>
+    </section>`).join('');
+}
+
+function archiveRow(t, showCat) {
   const fin = new Date(t.completedAt);
   const info = [`Finished ${fin.toLocaleString()}`];
   if (t.startedAt) info.push(`Started ${new Date(t.startedAt).toLocaleString()}`);
@@ -291,10 +308,11 @@ function archiveRow(t) {
       <span class="done-mark">${icon('check')}</span>
       <span class="title" title="${esc(info.join('\n'))}">${fmtTitle(t.title)}</span>
       ${t.notes ? `<span class="notes" title="${esc(t.notes.slice(0, 200))}">${icon('notes')}</span>` : ''}
-      <span class="cat">${esc(categoryName(t.categoryId))}</span>
+      ${showCat ? `<span class="cat">${esc(categoryName(t.categoryId))}</span>` : ''}
       <span class="flag" data-p="${t.priority}" title="Priority: ${PRIORITY[t.priority].label}">${t.priority === 'low' ? '' : icon('flag')}</span>
       <time class="time" datetime="${t.completedAt}">${fmtTime(fin)}</time>
       <button class="ghost icon small reveal" data-act="reopen" title="Reopen">${icon('reopen')}</button>
+      <button class="ghost icon small reveal" data-act="copy" title="Copy as Markdown">${icon('copy')}</button>
       <button class="ghost icon small reveal danger" data-act="delete" title="Delete">${icon('trash')}</button>
     </li>`;
 }
@@ -354,6 +372,15 @@ function startRename(span) {
   input.addEventListener('blur', () => finish(true));
 }
 
+async function copyText(text, message) {
+  try {
+    await navigator.clipboard.writeText(text);
+    ot.toast(message, 'Copied', { variant: 'success' });
+  } catch (e) {
+    ot.toast(e.message, 'Copy failed', { variant: 'danger' });
+  }
+}
+
 // Snackbar-style toast with an action button.
 function toastAction(message, label, fn) {
   const el = document.createElement('output');
@@ -367,7 +394,7 @@ function toastAction(message, label, fn) {
 // Dialogs.
 
 // ask() shows a confirm/prompt dialog and resolves to {action, value}.
-function ask({ title, message = '', input = null, buttons }) {
+function ask({ title, message = '', input = null, maxLength = 80, buttons }) {
   const dlg = $('#dlg-ask');
   $('[data-title]', dlg).textContent = title;
   $('[data-message]', dlg).textContent = message;
@@ -377,10 +404,11 @@ function ask({ title, message = '', input = null, buttons }) {
   wrap.hidden = input === null;
   field.required = input !== null;
   field.value = input ?? '';
+  field.maxLength = maxLength;
 
-  $('[data-buttons]', dlg).innerHTML = [{ label: 'Cancel', value: 'cancel', cls: 'ghost', formnovalidate: true }, ...buttons]
-    .map(b => `<button value="${b.value}" class="${b.cls || ''}" ${b.variant ? `data-variant="${b.variant}"` : ''}
-      ${b.formnovalidate ? 'formnovalidate' : ''}>${esc(b.label)}</button>`).join('');
+  // Cancel isn't a submit button, so Enter in the input picks the action.
+  $('[data-buttons]', dlg).innerHTML = `<button type="button" class="ghost" commandfor="dlg-ask" command="close">Cancel</button>`
+    + buttons.map(b => `<button value="${b.value}" class="${b.cls || ''}" ${b.variant ? `data-variant="${b.variant}"` : ''}>${esc(b.label)}</button>`).join('');
 
   return new Promise(resolve => {
     dlg.returnValue = 'cancel';
@@ -399,7 +427,8 @@ function editTask(id, focus = 'notes') {
   f.categoryId.innerHTML = store.get().categories
     .map(c => `<option value="${c.id}" ${c.id === t.categoryId ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
   f.title.value = t.title;
-  f.notes.value = t.notes;
+  const notes = $('#notes');
+  notes.innerHTML = mdToHtml(t.notes);
   f.priority.value = t.priority;
   f.due.value = t.due || '';
   f.categoryId.closest('label').hidden = !!t.parentId;
@@ -409,14 +438,21 @@ function editTask(id, focus = 'notes') {
     if (dlg.returnValue !== 'save') return;
     store.updateTask(id, {
       title: f.title.value.trim() || t.title,
-      notes: f.notes.value.trim(),
+      notes: htmlToMd(notes),
       priority: f.priority.value,
       due: f.due.value || null,
       categoryId: f.categoryId.value,
     });
   }, { once: true });
   dlg.showModal();
-  f[focus].focus();
+  if (focus === 'notes') {
+    // Cursor at the end of the notes.
+    notes.focus();
+    getSelection().selectAllChildren(notes);
+    getSelection().collapseToEnd();
+  } else {
+    f[focus].focus();
+  }
 }
 
 // Import / export.
@@ -605,14 +641,9 @@ function bind() {
   });
 
   main.addEventListener('click', async e => {
-    const el = e.target.closest('[data-act], .done-link');
+    const el = e.target.closest('[data-act]');
     if (!el) return;
     const id = el.closest('.task')?.dataset.id;
-
-    if (el.classList.contains('done-link')) {
-      archiveFilter = el.dataset.cat;
-      return;
-    }
 
     switch (el.dataset.act) {
       case 'rename':
@@ -648,6 +679,11 @@ function bind() {
         editTask(id, 'due');
         break;
 
+      case 'toggle-done':
+        showDone = !showDone;
+        render();
+        break;
+
       case 'toggle':
         store.updateTask(id, { collapsed: !store.find(id).collapsed });
         break;
@@ -662,6 +698,21 @@ function bind() {
         if (store.find(id).collapsed) store.updateTask(id, { collapsed: false });
         else render();
         break;
+
+      case 'copy': {
+        const n = store.descendants(id).length;
+        copyText(taskToMarkdown(store.find(id), store.get().tasks),
+          n ? `Task and ${n} subtask(s) copied as Markdown.` : 'Task copied as Markdown.');
+        break;
+      }
+
+      case 'copy-cat': {
+        const cid = route().id;
+        const roots = rootsFor(cid);
+        copyText(categoryToMarkdown(categoryName(cid), roots, store.get().tasks),
+          `${roots.length} open task(s) copied as Markdown.`);
+        break;
+      }
 
       case 'reopen':
         store.reopenTask(id);
@@ -708,10 +759,45 @@ function bind() {
   });
 }
 
+// Color themes; the palettes are in app.css. '' is Oat's own (Classic).
+const THEMES = [
+  ['', 'Classic'], ['paper', 'Paper'], ['sage', 'Sage'], ['mist', 'Mist'], ['blush', 'Blush'],
+  ['lavender', 'Lavender'], ['peach', 'Peach'], ['slate', 'Slate'], ['forest', 'Forest'], ['dusk', 'Dusk'],
+];
+
+function renderThemes() {
+  const cur = document.documentElement.dataset.color || '';
+  $('#theme-menu').innerHTML = THEMES.map(([id, name]) => `
+    <button role="menuitem" data-theme="${id}" aria-current="${id === cur}">
+      <span class="swatch ${id ? '' : 'classic'}" ${id ? `data-color="${id}"` : ''}></span> ${name}
+    </button>`).join('');
+}
+
+function setTheme(id) {
+  if (id) document.documentElement.dataset.color = id;
+  else delete document.documentElement.dataset.color;
+  try { localStorage.setItem('2do:color', id); } catch {}
+  renderThemes();
+}
+
 async function init() {
   await store.load();
   store.onChange(render);
   bind();
+  renderThemes();
+  $('#theme-menu').addEventListener('click', e => {
+    const b = e.target.closest('[data-theme]');
+    if (!b) return;
+    setTheme(b.dataset.theme);
+    $('#theme-menu').hidePopover();
+  });
+  setupEditor($('#notes'), $('#dlg-task .toolbar'), async () => {
+    const { action, value } = await ask({
+      title: 'Add link', input: '', maxLength: 2000,
+      buttons: [{ label: 'Add', value: 'ok' }],
+    });
+    return action === 'ok' ? value : '';
+  });
   render();
 
   if ('serviceWorker' in navigator) {

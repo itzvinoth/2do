@@ -11,6 +11,10 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="vendor/oat/oat.min.css">
   <link rel="stylesheet" href="css/app.css">
+  <script>
+    // Apply the saved color theme before first paint.
+    try { const c = localStorage.getItem('2do:color'); if (c) document.documentElement.dataset.color = c; } catch {}
+  </script>
   <script src="vendor/oat/oat.min.js" defer></script>
   <script type="module" src="js/app.js"></script>
 </head>
@@ -39,6 +43,15 @@
       <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L7.5 3.64A1 1 0 0 0 6 4.5z"/></symbol>
       <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
       <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+      <symbol id="i-bold" viewBox="0 0 24 24"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/></symbol>
+      <symbol id="i-italic" viewBox="0 0 24 24"><path d="M19 4h-9"/><path d="M14 20H5"/><path d="M15 4 9 20"/></symbol>
+      <symbol id="i-strikethrough" viewBox="0 0 24 24"><path d="M16 4H9a3 3 0 0 0-2.83 4"/><path d="M14 12a4 4 0 0 1 0 8H6"/><path d="M4 12h16"/></symbol>
+      <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></symbol>
+      <symbol id="i-list-ordered" viewBox="0 0 24 24"><path d="M10 12h11"/><path d="M10 18h11"/><path d="M10 6h11"/><path d="M4 10h2"/><path d="M4 6h1v4"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+      <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
       <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
     </defs>
   </svg>
@@ -50,6 +63,10 @@
       <span class="spacer"></span>
       <button class="ghost icon" id="btn-import" data-tooltip-placement="bottom" title="Import from .md"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg></button>
       <button class="ghost icon" id="btn-export" data-tooltip-placement="bottom" title="Export to .md"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg></button>
+      <ot-dropdown>
+        <button class="ghost icon" id="btn-theme" popovertarget="theme-menu" data-tooltip-placement="bottom" title="Color theme"><svg class="i" aria-hidden="true"><use href="#i-palette"/></svg></button>
+        <menu popover id="theme-menu" class="theme-menu"></menu>
+      </ot-dropdown>
       <input type="file" id="file-import" accept=".md,.markdown,text/markdown,text/plain" hidden>
     </header>
 
@@ -78,7 +95,20 @@
         <input name="title" class="dlg-title" maxlength="500" aria-label="Title" required>
       </header>
       <div class="vstack">
-        <label>Notes <textarea name="notes" rows="4" placeholder="Add details&hellip;"></textarea></label>
+        <div class="editor">
+          <div class="toolbar" role="toolbar" aria-label="Formatting">
+            <button type="button" class="ghost icon small" data-cmd="bold" title="Bold (Ctrl+B)"><svg class="i" aria-hidden="true"><use href="#i-bold"/></svg></button>
+            <button type="button" class="ghost icon small" data-cmd="italic" title="Italic (Ctrl+I)"><svg class="i" aria-hidden="true"><use href="#i-italic"/></svg></button>
+            <button type="button" class="ghost icon small" data-cmd="strikeThrough" title="Strikethrough"><svg class="i" aria-hidden="true"><use href="#i-strikethrough"/></svg></button>
+            <button type="button" class="ghost icon small" data-cmd="code" title="Code"><svg class="i" aria-hidden="true"><use href="#i-code"/></svg></button>
+            <span class="sep"></span>
+            <button type="button" class="ghost icon small" data-cmd="insertUnorderedList" title="Bulleted list"><svg class="i" aria-hidden="true"><use href="#i-list"/></svg></button>
+            <button type="button" class="ghost icon small" data-cmd="insertOrderedList" title="Numbered list"><svg class="i" aria-hidden="true"><use href="#i-list-ordered"/></svg></button>
+            <button type="button" class="ghost icon small" data-cmd="link" title="Link (Ctrl+K)"><svg class="i" aria-hidden="true"><use href="#i-link"/></svg></button>
+          </div>
+          <div id="notes" class="editor-body" contenteditable="true" role="textbox" aria-multiline="true"
+            aria-label="Notes" data-placeholder="Add details&hellip;"></div>
+        </div>
         <div class="row">
           <label class="col-4">Priority
             <select name="priority">

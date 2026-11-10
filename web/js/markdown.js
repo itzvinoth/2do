@@ -23,32 +23,50 @@ const reDate = /^\d{4}-\d{2}-\d{2}$/;
 export function toMarkdown({ categories, tasks }) {
   const out = ['# 2do', '', `Exported on ${new Date().toLocaleString()}`, ''];
 
-  // Open tasks first, then finished ones; otherwise in stored order.
-  const children = parentId => tasks.filter(t => (t.parentId || null) === parentId)
-    .sort((a, b) => !!a.completedAt - !!b.completedAt);
-
-  const write = (t, depth) => {
-    const pad = '  '.repeat(depth);
-    let line = `${pad}- [${t.completedAt ? 'x' : ' '}] ${t.title.replace(/\n/g, ' ')} \`priority:${t.priority}\``;
-    if (t.due) line += ` \`due:${t.due}\``;
-    if (t.startedAt) line += ` \`started:${t.startedAt}\``;
-    if (t.completedAt) line += ` \`done:${t.completedAt}\``;
-    if (t.createdAt) line += ` \`created:${t.createdAt}\``;
-    out.push(line);
-
-    for (const n of (t.notes || '').split('\n').filter(Boolean)) {
-      out.push(`${pad}  > ${n}`);
-    }
-    children(t.id).forEach(c => write(c, depth + 1));
-  };
-
   for (const c of categories) {
     out.push(`## ${c.name}`, '');
-    children(null).filter(t => t.categoryId === c.id).forEach(t => write(t, 0));
+    children(tasks, null).filter(t => t.categoryId === c.id).forEach(t => write(out, tasks, t, 0, true));
     out.push('');
   }
 
   return out.join('\n');
+}
+
+// One task and its subtasks, for copying. Leaves out the default priority and
+// creation times so the text reads well when pasted; it still imports.
+export function taskToMarkdown(task, tasks) {
+  const out = [];
+  write(out, tasks, task, 0, false);
+  return out.join('\n');
+}
+
+// A category's open tasks under its heading, for copying.
+export function categoryToMarkdown(name, roots, tasks) {
+  const out = [`## ${name}`, ''];
+  roots.forEach(t => write(out, tasks, t, 0, false));
+  return out.join('\n');
+}
+
+// Open tasks first, then finished ones; otherwise in stored order.
+function children(tasks, parentId) {
+  return tasks.filter(t => (t.parentId || null) === parentId)
+    .sort((a, b) => !!a.completedAt - !!b.completedAt);
+}
+
+function write(out, tasks, t, depth, full) {
+  const pad = '  '.repeat(depth);
+  let line = `${pad}- [${t.completedAt ? 'x' : ' '}] ${t.title.replace(/\n/g, ' ')}`;
+  if (full || t.priority !== 'low') line += ` \`priority:${t.priority}\``;
+  if (t.due) line += ` \`due:${t.due}\``;
+  if (t.startedAt) line += ` \`started:${t.startedAt}\``;
+  if (t.completedAt) line += ` \`done:${t.completedAt}\``;
+  if (full && t.createdAt) line += ` \`created:${t.createdAt}\``;
+  out.push(line);
+
+  for (const n of (t.notes || '').split('\n').filter(Boolean)) {
+    out.push(`${pad}  > ${n}`);
+  }
+  children(tasks, t.id).forEach(c => write(out, tasks, c, depth + 1, full));
 }
 
 export function fromMarkdown(text) {

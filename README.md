@@ -3,12 +3,21 @@
 A simple, offline-first todo app. Plain HTML/CSS/JS with no frontend framework, styled with [Oat UI](https://oat.ink).
 It runs as a Linux desktop app or as an installable PWA.
 
+![2do showing tasks across categories, with subtasks, an in-progress task, due dates and priority flags](docs/screenshots/tasks.png)
+
 - Categories: create as many as you need (Personal, Project X, …)
 - Priorities (high, medium, low) and due dates
 - Subtasks, nested as deep as you like
 - Mark tasks you've started as **In progress**
 - Finished tasks move to the Archive, grouped by the day they were finished. You can reopen them
+- Notes with basic formatting: bold, italic, code, lists and links
+- Copy a task or a whole category as Markdown
+- 10 soft color themes, light and dark
 - Import and export everything as a Markdown (`.md`) file ([format](#import-file-format-md))
+
+| Notes editor | Finished tasks inline (Sage theme) | Color themes (Dusk theme) |
+|---|---|---|
+| ![Task dialog with formatted notes](docs/screenshots/notes.png) | ![A category with its finished tasks expanded below the list](docs/screenshots/finished.png) | ![The color theme menu open over the dark Dusk theme](docs/screenshots/themes.png) |
 
 ## Install
 
@@ -102,7 +111,8 @@ Press **Esc** to clear the input.
 | Mark as in progress | Click the ▶ icon. The task gets a blue **In progress** chip and moves to the top of its list. Click ⏸ to stop. Hover over the chip to see when you started |
 | Change priority | Click the flag. Red is high, amber is medium, and low shows no flag |
 | Change due date | Click the date (or the calendar icon) to open the task dialog with the date selected. Overdue dates turn red and today's turn amber |
-| Notes, or move to another category | Pencil icon |
+| Notes, or move to another category | Pencil icon. Notes have a small formatting toolbar: bold, italic, strikethrough, code, bulleted and numbered lists, and links. Shortcuts: Ctrl+B, Ctrl+I, Ctrl+K for a link, Tab / Shift+Tab to indent a list item. Ctrl+click a link to open it. Pasted text comes in unformatted |
+| Copy | Two-squares icon. Copies the task and all its subtasks as a Markdown checklist, ready to paste into notes or chat, or to import elsewhere (see [Import file format](#import-file-format-md)). Also works in the Archive |
 | Delete | Trash icon |
 
 Tasks are sorted with in-progress tasks first, then by priority, then by due date. `` `Backticks` `` in a title are shown as inline code.
@@ -124,10 +134,16 @@ Subtasks always belong to their top-level task's category. Moving a task to anot
 with its subtasks, and any open subtasks are finished with it. The snackbar offers
 **Undo**. The archive groups tasks by the day you finished them (Today, Yesterday, then dates). Hover over a title to
 see the exact finish, creation and due times. Use the reopen icon to bring a task back. Click **N finished** under a
-category's list to see that category's archive.
+list to show its finished tasks right there, grouped the same way; click it again to hide them.
 
 **Categories.** Type a name in **New category** in the sidebar and press Enter. To rename or delete a category, open
-it and use the ⋮ menu. Deleting a category also deletes its tasks.
+it and use the ⋮ menu. Deleting a category also deletes its tasks. The same menu has **Copy as Markdown**, which
+copies the category's open tasks and their subtasks under a `## Category` heading. Finished tasks in the Archive are
+left out.
+
+**Color theme.** Click the palette icon at the top right and pick one of 10 themes: Classic (follows your
+system's light or dark mode), Paper, Sage, Mist, Blush, Lavender and Peach (light), or Slate, Forest and Dusk (dark).
+The choice is remembered on this computer; it isn't part of your exported tasks.
 
 **Import and export.** These are the two icons at the top right: the arrow pointing down into a tray imports a `.md` file, and the arrow pointing up out of a tray exports one. Hover over either to see its label.
 
@@ -167,7 +183,7 @@ The finished `[x]` top-level task goes straight to the archive; the finished sub
 | `- [/] Title` | An in-progress task (the convention used by Obsidian and other apps). 2do exports these as `- [ ]` with a `started` tag instead, so the file still renders as a normal checklist elsewhere. |
 | `- Title` | A plain bullet without a checkbox is imported as an open task. |
 | `  - [ ] Title` | A subtask of the task above it with less indentation. Indent each level by two spaces (or a tab); nest as deep as you like. |
-| `  > Some text` | A note for the task above it. Indent it by at least two spaces. Each `>` line is one line of the note. |
+| `  > Some text` | A note for the task above it. Indent it by at least two spaces. Each `>` line is one line of the note. Notes can use `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``, `- ` and `1. ` lists (indent two spaces to nest) and `[links](https://example.com)`. |
 | Anything else | Ignored. This includes `#` and `###` headings, paragraphs and blank lines. |
 
 See [`examples/tasks-1.md`](examples/tasks-1.md) for a real-world file with subtasks nested three levels deep.

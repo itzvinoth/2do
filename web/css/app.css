@@ -75,7 +75,7 @@ button.icon.small svg.i {
 }
 
 /* Oat centres tooltips on their element; keep the right-most one on screen. */
-#btn-export + .ot-tooltip::after {
+#btn-theme + .ot-tooltip::after {
   translate: -80% -50%;
 }
 
@@ -494,10 +494,13 @@ button.chip.progress {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  margin: var(--space-6) var(--space-2) 0;
+  margin: var(--space-6) 0 var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: none;
   font-size: var(--text-7);
   color: var(--muted-foreground);
-  text-decoration: none;
+  cursor: pointer;
 
   &:hover {
     color: var(--foreground);
@@ -569,6 +572,72 @@ dialog {
   }
 }
 
+/* Notes editor in the task dialog. */
+
+.editor {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+
+  &:focus-within {
+    border-color: var(--muted-foreground);
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: var(--space-1);
+    border-bottom: 1px solid var(--border);
+
+    button[aria-pressed="true"] {
+      color: var(--foreground);
+      background-color: var(--muted);
+    }
+  }
+
+  .sep {
+    width: 1px;
+    height: 1.25rem;
+    margin-inline: var(--space-1);
+    background-color: var(--border);
+  }
+}
+
+.editor-body {
+  min-height: 7rem;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-3);
+  outline: none;
+  overflow-wrap: anywhere;
+
+  &:empty::before {
+    content: attr(data-placeholder);
+    color: var(--faint-foreground);
+    pointer-events: none;
+  }
+
+  ul, ol {
+    margin: var(--space-1) 0;
+    padding-inline-start: 1.5rem;
+  }
+
+  ul ul, ol ol, ul ol, ol ul {
+    margin: 0;
+  }
+
+  code {
+    padding: 0.05em 0.35em;
+    font-size: 0.875em;
+    background-color: var(--muted);
+    border-radius: var(--radius-small);
+  }
+
+  a {
+    color: var(--progress);
+  }
+}
+
 .snack {
   display: flex;
   align-items: center;
@@ -598,4 +667,224 @@ dialog {
   .task .status .dot {
     animation: none;
   }
+}
+
+/* Color themes. "Classic" (no attribute) is Oat's own palette and follows the
+   system's light or dark mode; the others are fixed, soft, low-contrast
+   palettes. The attribute also goes on the swatches in the theme menu, so
+   each swatch previews its own theme. */
+
+[data-color="paper"] {
+  color-scheme: light;
+  --background: #f6f2ea;
+  --foreground: #3f3a33;
+  --card: #fbf8f2;
+  --card-foreground: #3f3a33;
+  --primary: #3f3a33;
+  --primary-foreground: #fbf8f2;
+  --secondary: #ece6da;
+  --secondary-foreground: #3f3a33;
+  --muted: #ece6da;
+  --muted-foreground: #7a7166;
+  --faint: #fbf8f2;
+  --faint-foreground: #a99f92;
+  --accent: #ece6da;
+  --border: #e2dbcd;
+  --input: #e2dbcd;
+  --ring: #4f8a87;
+  --progress: #4f8a87;
+}
+
+[data-color="sage"] {
+  color-scheme: light;
+  --background: #eef2ec;
+  --foreground: #34403a;
+  --card: #f5f8f3;
+  --card-foreground: #34403a;
+  --primary: #34403a;
+  --primary-foreground: #f5f8f3;
+  --secondary: #e1e8de;
+  --secondary-foreground: #34403a;
+  --muted: #e1e8de;
+  --muted-foreground: #6a796f;
+  --faint: #f5f8f3;
+  --faint-foreground: #9aa89e;
+  --accent: #e1e8de;
+  --border: #d5ded2;
+  --input: #d5ded2;
+  --ring: #5f8a6b;
+  --progress: #5f8a6b;
+}
+
+[data-color="mist"] {
+  color-scheme: light;
+  --background: #eef2f6;
+  --foreground: #333c48;
+  --card: #f6f8fb;
+  --card-foreground: #333c48;
+  --primary: #333c48;
+  --primary-foreground: #f6f8fb;
+  --secondary: #e2e8ef;
+  --secondary-foreground: #333c48;
+  --muted: #e2e8ef;
+  --muted-foreground: #697485;
+  --faint: #f6f8fb;
+  --faint-foreground: #9ba5b3;
+  --accent: #e2e8ef;
+  --border: #d6dde6;
+  --input: #d6dde6;
+  --ring: #4f7cac;
+  --progress: #4f7cac;
+}
+
+[data-color="blush"] {
+  color-scheme: light;
+  --background: #f8efee;
+  --foreground: #45373a;
+  --card: #fcf7f6;
+  --card-foreground: #45373a;
+  --primary: #45373a;
+  --primary-foreground: #fcf7f6;
+  --secondary: #f0e2e1;
+  --secondary-foreground: #45373a;
+  --muted: #f0e2e1;
+  --muted-foreground: #846f72;
+  --faint: #fcf7f6;
+  --faint-foreground: #b29ea1;
+  --accent: #f0e2e1;
+  --border: #e8d7d6;
+  --input: #e8d7d6;
+  --ring: #b5646f;
+  --progress: #b5646f;
+}
+
+[data-color="lavender"] {
+  color-scheme: light;
+  --background: #f1eff7;
+  --foreground: #3b3748;
+  --card: #f8f7fc;
+  --card-foreground: #3b3748;
+  --primary: #3b3748;
+  --primary-foreground: #f8f7fc;
+  --secondary: #e6e2f0;
+  --secondary-foreground: #3b3748;
+  --muted: #e6e2f0;
+  --muted-foreground: #736d86;
+  --faint: #f8f7fc;
+  --faint-foreground: #a39eb4;
+  --accent: #e6e2f0;
+  --border: #dbd6e8;
+  --input: #dbd6e8;
+  --ring: #7b68b0;
+  --progress: #7b68b0;
+}
+
+[data-color="peach"] {
+  color-scheme: light;
+  --background: #fbf2ea;
+  --foreground: #4a3c31;
+  --card: #fdf8f3;
+  --card-foreground: #4a3c31;
+  --primary: #4a3c31;
+  --primary-foreground: #fdf8f3;
+  --secondary: #f3e5d8;
+  --secondary-foreground: #4a3c31;
+  --muted: #f3e5d8;
+  --muted-foreground: #8a7563;
+  --faint: #fdf8f3;
+  --faint-foreground: #b8a594;
+  --accent: #f3e5d8;
+  --border: #ebdbcc;
+  --input: #ebdbcc;
+  --ring: #c47f45;
+  --progress: #c47f45;
+}
+
+[data-color="slate"] {
+  color-scheme: dark;
+  --background: #23272e;
+  --foreground: #d2d6dc;
+  --card: #2a2f37;
+  --card-foreground: #d2d6dc;
+  --primary: #d2d6dc;
+  --primary-foreground: #2a2f37;
+  --secondary: #323843;
+  --secondary-foreground: #d2d6dc;
+  --muted: #323843;
+  --muted-foreground: #99a1ac;
+  --faint: #2a2f37;
+  --faint-foreground: #6c7480;
+  --accent: #323843;
+  --border: #3a404a;
+  --input: #3a404a;
+  --ring: #7ba4d6;
+  --progress: #7ba4d6;
+}
+
+[data-color="forest"] {
+  color-scheme: dark;
+  --background: #1f2622;
+  --foreground: #d1dad3;
+  --card: #252e29;
+  --card-foreground: #d1dad3;
+  --primary: #d1dad3;
+  --primary-foreground: #252e29;
+  --secondary: #2e3832;
+  --secondary-foreground: #d1dad3;
+  --muted: #2e3832;
+  --muted-foreground: #96a49a;
+  --faint: #252e29;
+  --faint-foreground: #68766c;
+  --accent: #2e3832;
+  --border: #36423b;
+  --input: #36423b;
+  --ring: #7fb08b;
+  --progress: #7fb08b;
+}
+
+[data-color="dusk"] {
+  color-scheme: dark;
+  --background: #29232e;
+  --foreground: #dcd2df;
+  --card: #302936;
+  --card-foreground: #dcd2df;
+  --primary: #dcd2df;
+  --primary-foreground: #302936;
+  --secondary: #3a3240;
+  --secondary-foreground: #dcd2df;
+  --muted: #3a3240;
+  --muted-foreground: #a496aa;
+  --faint: #302936;
+  --faint-foreground: #75697b;
+  --accent: #3a3240;
+  --border: #43394a;
+  --input: #43394a;
+  --ring: #c28fc4;
+  --progress: #c28fc4;
+}
+
+.theme-menu .swatch {
+  display: inline-grid;
+  place-items: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-full);
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 0 0 4px var(--background), inset 0 0 0 10px var(--progress);
+
+  &.classic {
+    background: linear-gradient(135deg, #fff 50%, #09090b 50%);
+    box-shadow: none;
+    border-color: #a1a1aa;
+  }
+}
+
+.theme-menu [aria-current="true"]::after {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-inline-start: auto;
+  border-radius: var(--radius-full);
+  background-color: var(--foreground);
 }
