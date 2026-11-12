@@ -132,9 +132,48 @@ main {
 }
 
 .page {
-  max-width: 65rem;
+  position: relative;
+  max-width: var(--page-width, 65rem);
   margin: 0 auto;
   padding: var(--space-8) var(--space-6) var(--space-16);
+}
+
+/* Drag handles on both edges of the page; a line shows on hover. */
+.page-resize {
+  position: absolute;
+  inset-block: 0;
+  width: 0.75rem;
+  cursor: col-resize;
+  touch-action: none;
+
+  &.start { left: 0; }
+  &.end { right: 0; }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset-block: var(--space-4);
+    left: calc(50% - 1px);
+    width: 2px;
+    border-radius: var(--radius-full);
+    background-color: var(--ring);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  &:hover::after {
+    opacity: 0.6;
+  }
+}
+
+/* While dragging: keep the resize cursor and don't select text. */
+.resizing {
+  cursor: col-resize;
+  user-select: none;
+
+  .page-resize::after {
+    opacity: 0.6;
+  }
 }
 
 .view-head {
@@ -658,6 +697,11 @@ dialog {
   }
 }
 
+/* The task dialog is as wide as the task list, so notes have room. */
+#dlg-task {
+  width: min(100% - 2rem, var(--page-width, 65rem));
+}
+
 /* Notes editor in the task dialog. */
 
 .editor {
@@ -734,6 +778,10 @@ dialog {
 @media (max-width: 768px) {
   .page {
     padding: var(--space-5) var(--space-3) var(--space-12);
+  }
+
+  .page-resize {
+    display: none;
   }
 
   .task .cat {

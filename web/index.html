@@ -12,8 +12,9 @@
   <link rel="stylesheet" href="vendor/oat/oat.min.css">
   <link rel="stylesheet" href="css/app.css">
   <script>
-    // Apply the saved color theme before first paint.
+    // Apply the saved color theme and page width before first paint.
     try { const c = localStorage.getItem('2do:color'); if (c) document.documentElement.dataset.color = c; } catch {}
+    try { const w = localStorage.getItem('2do:width'); if (w) document.documentElement.style.setProperty('--page-width', `${w}px`); } catch {}
   </script>
   <script src="vendor/oat/oat.min.js" defer></script>
   <script type="module" src="js/app.js"></script>

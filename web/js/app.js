@@ -79,6 +79,9 @@ function render() {
   const main = $('#view');
   if (r.view === 'archive') renderArchive(main);
   else renderTasks(main, r.view === 'category' ? r.id : null);
+  main.querySelector('.page').insertAdjacentHTML('afterbegin', `
+    <div class="page-resize start" title="Drag to resize, double-click to reset"></div>
+    <div class="page-resize end" title="Drag to resize, double-click to reset"></div>`);
 
   if (focusId) {
     document.getElementById(focusId)?.focus();
@@ -815,11 +818,49 @@ function setTheme(id) {
   renderThemes();
 }
 
+// Dragging either edge of the centered page sets its width; double-click
+// resets it. The width is remembered across restarts.
+const PAGE_MIN_WIDTH = 480;
+
+function setupPageResize() {
+  const main = $('#view');
+  const root = document.documentElement;
+  let center = null;
+
+  main.addEventListener('pointerdown', e => {
+    if (!e.target.matches('.page-resize') || e.button !== 0) return;
+    e.preventDefault();
+    const r = e.target.parentElement.getBoundingClientRect();
+    center = r.left + r.width / 2;
+    e.target.setPointerCapture(e.pointerId);
+    root.classList.add('resizing');
+  });
+  main.addEventListener('pointermove', e => {
+    if (center === null) return;
+    const width = Math.min(main.clientWidth, Math.max(PAGE_MIN_WIDTH, 2 * Math.abs(e.clientX - center)));
+    root.style.setProperty('--page-width', `${Math.round(width)}px`);
+  });
+  const stop = () => {
+    if (center === null) return;
+    center = null;
+    root.classList.remove('resizing');
+    try { localStorage.setItem('2do:width', parseInt(root.style.getPropertyValue('--page-width'))); } catch {}
+  };
+  main.addEventListener('pointerup', stop);
+  main.addEventListener('pointercancel', stop);
+  main.addEventListener('dblclick', e => {
+    if (!e.target.matches('.page-resize')) return;
+    root.style.removeProperty('--page-width');
+    try { localStorage.removeItem('2do:width'); } catch {}
+  });
+}
+
 async function init() {
   await store.load();
   store.onChange(render);
   bind();
   renderThemes();
+  setupPageResize();
   $('#theme-menu').addEventListener('click', e => {
     const b = e.target.closest('[data-theme]');
     if (!b) return;
