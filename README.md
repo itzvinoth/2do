@@ -30,7 +30,7 @@ Download `2do_<version>_amd64.deb`, then double-click it. It opens in your Softw
 **Install**. You can also install it from a terminal:
 
 ```sh
-sudo apt install ./2do_0.2.0_amd64.deb
+sudo apt install ./2do_0.2.1_amd64.deb
 ```
 
 - **Update:** install the newer `.deb` the same way.
@@ -254,11 +254,11 @@ You need [Go](https://go.dev/dl/) 1.24 or newer, and `make`.
 - `2do_<version>_<arch>.deb`, the Debian package (needs `dpkg-deb`, which Debian-based distros already have)
 - `SHA256SUMS`
 
-Set the version with `make dist VERSION=0.2.0`. The package's maintainer field comes from your `git config` name and
+Set the version with `make dist VERSION=0.2.1`. The package's maintainer field comes from your `git config` name and
 email; override it with `MAINTAINER="Your Name <you@example.com>"`.
 
 To publish a release, upload everything in `dist/` to a new release on the repository's Releases page, for example
-with GitHub CLI: `gh release create v0.2.0 dist/*`.
+with GitHub CLI: `gh release create v0.2.1 dist/*`.
 
 The web app in `web/` is embedded into the binary when it's built, so rebuild (`make run`) after changing any file
 there.

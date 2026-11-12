@@ -1,5 +1,5 @@
 BIN := 2do
-VERSION ?= 0.2.0
+VERSION ?= 0.2.1
 ARCHES := amd64 arm64
 MAINTAINER ?= $(shell git config user.name) <$(shell git config user.email)>
 
