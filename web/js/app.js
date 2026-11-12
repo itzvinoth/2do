@@ -64,8 +64,13 @@ let focusId = 'add-title';
 let renameId = null;
 let archiveFilter = '';
 
-// Whether a task list shows its finished tasks below it.
+// Whether a task list shows its finished tasks below it, and the tasks whose
+// finished subtasks are shown. Up to SUBS_DONE_SHOWN finished subtasks are
+// always shown; more fold into a stack.
 let showDone = false;
+const showSubsDone = new Set();
+const SUBS_DONE_SHOWN = 2;
+const subsDoneHidden = (id, nDone) => nDone > SUBS_DONE_SHOWN && !showSubsDone.has(id);
 
 function render() {
   renderSidebar();
@@ -188,13 +193,34 @@ function renderTasks(main, catId) {
     </div>`;
 }
 
-// A task row followed by its subtasks (unless collapsed) and, when open, the
-// inline "Add a subtask" input.
+// A task row followed by its open subtasks (unless collapsed), the inline
+// "Add a subtask" input when open, and its finished subtasks (folded into a
+// stack when there are many).
 function taskTree(t, depth, showCat) {
   let html = taskRow(t, depth, showCat);
-  if (!t.collapsed) html += childrenOf(t.id).map(c => taskTree(c, depth + 1, false)).join('');
+  const kids = t.collapsed ? [] : childrenOf(t.id);
+  const done = kids.filter(c => c.completedAt);
+  html += kids.filter(c => !c.completedAt).map(c => taskTree(c, depth + 1, false)).join('');
   if (subDraft?.parentId === t.id) html += subAddRow(depth + 1);
+  if (done.length > SUBS_DONE_SHOWN) html += subsDoneStack(t.id, done, depth + 1);
+  if (!subsDoneHidden(t.id, done.length)) html += done.map(c => taskTree(c, depth + 1, false)).join('');
   return html;
+}
+
+// Many finished subtasks fold into a stack of cards, the latest one on top;
+// clicking it expands them, and a "Show less" row in its place folds them.
+function subsDoneStack(id, done, depth) {
+  const shown = showSubsDone.has(id);
+  const top = done.reduce((a, b) => (a.completedAt > b.completedAt ? a : b));
+  return `
+    <li class="task sub sub-stack ${shown ? 'open' : ''}" data-id="${id}" style="--depth: ${depth}">
+      <button class="stack" data-act="toggle-sub-done" aria-expanded="${shown}"
+        title="${shown ? 'Hide' : 'Show'} ${done.length} finished subtasks">
+        ${shown ? `${icon('chevron-up')} Show less` : `
+        ${icon('check')}<span class="title">${fmtTitle(top.title)}</span>
+        <span class="more">+${done.length - 1} finished</span>`}
+      </button>
+    </li>`;
 }
 
 function taskRow(t, depth, showCat) {
@@ -623,16 +649,20 @@ function bind() {
         break;
 
       case 'complete': {
-        // Subtasks stay in place when ticked; top-level tasks move to the archive.
+        // Ticked subtasks slide into their parent's stack of finished ones (or
+        // stay in place if few are finished or the stack is open); top-level
+        // tasks move to the archive.
+        const t = store.find(id);
+        const nDone = t.parentId && childrenOf(t.parentId).filter(c => c.completedAt).length + 1;
         if (!el.checked) {
           store.reopenTask(id);
-        } else if (store.find(id).parentId) {
+        } else if (t.parentId && !subsDoneHidden(t.parentId, nDone)) {
           store.completeTask(id);
         } else {
           el.closest('.task').classList.add('completing');
           setTimeout(() => {
             const ids = store.completeTask(id);
-            toastAction('Task finished.', 'Undo', () => store.reopenMany(ids));
+            if (!t.parentId) toastAction('Task finished.', 'Undo', () => store.reopenMany(ids));
           }, 300);
         }
         break;
@@ -681,6 +711,11 @@ function bind() {
 
       case 'toggle-done':
         showDone = !showDone;
+        render();
+        break;
+
+      case 'toggle-sub-done':
+        if (!showSubsDone.delete(id)) showSubsDone.add(id);
         render();
         break;
 

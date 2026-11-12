@@ -125,7 +125,8 @@ input stays open, so you can add several in a row. Press Esc when you're done.
 | Collapse or expand subtasks | Click the `2/5` progress chip next to the parent task |
 | Make a task a subtask of the one above it | Click its title to rename it, then press **Tab** |
 | Move a subtask up a level | Click its title, then press **Shift+Tab** |
-| Finish a subtask | Tick it. It stays under its parent, struck through, and the progress chip updates |
+| Finish a subtask | Tick it. It moves below its parent's open subtasks, struck through, and the progress chip updates. Once more than two are finished, they fold into a stack of cards showing the latest one |
+| See finished subtasks | Click the stack to expand it. Click **Show less** (in the same spot) to fold it again |
 | Reopen a subtask | Untick it. This also reopens its parent if the parent was finished |
 
 Subtasks always belong to their top-level task's category. Moving a task to another category moves its subtasks too.

@@ -2,7 +2,7 @@
 // immediately, falling back to the cache when offline. The data API is
 // never cached.
 
-const CACHE = '2do-v8';
+const CACHE = '2do-v10';
 const SHELL = [
   './',
   'index.html',

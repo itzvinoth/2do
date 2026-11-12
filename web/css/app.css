@@ -308,6 +308,92 @@ ot-dropdown menu[popover] {
     text-decoration-color: var(--faint-foreground);
   }
 
+  /* Finished subtasks folded into a stack of cards. */
+  &.sub-stack {
+    --stack-left: calc(var(--space-2) + var(--depth) * var(--indent));
+    position: relative;
+    isolation: isolate;
+    padding-block: var(--space-2) var(--space-5);
+
+    &:hover {
+      background: none;
+    }
+
+    /* The cards underneath, each a little narrower, peeking out below. */
+    &:not(.open)::before, &:not(.open)::after {
+      content: '';
+      position: absolute;
+      inset-inline: calc(var(--stack-left) + 0.5rem) calc(var(--space-2) + 0.5rem);
+      z-index: 1;
+      bottom: calc(var(--space-5) - 6px);
+      height: 1.5rem;
+      background-color: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-medium);
+    }
+
+    &:not(.open)::after {
+      inset-inline: calc(var(--stack-left) + 1rem) calc(var(--space-2) + 1rem);
+      z-index: 0;
+      bottom: calc(var(--space-5) - 12px);
+      opacity: 0.6;
+    }
+
+    .stack {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      width: 100%;
+      min-width: 0;
+      padding: var(--space-1) var(--space-3);
+      font-size: var(--text-7);
+      color: var(--muted-foreground);
+      text-align: start;
+      background-color: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-medium);
+      cursor: pointer;
+      transition: border-color var(--transition-fast), translate var(--transition-fast);
+      position: relative;
+      z-index: 2;
+
+      .title {
+        padding-block: var(--space-1);
+        text-decoration: line-through;
+        text-decoration-color: var(--faint-foreground);
+        cursor: pointer;
+      }
+
+      .more {
+        flex-shrink: 0;
+        font-size: var(--text-8);
+      }
+
+      &:hover {
+        color: var(--foreground);
+        border-color: var(--ring);
+        translate: 0 -1px;
+      }
+    }
+
+    /* Expanded: a plain "Show less" row. */
+    &.open {
+      padding-block: 0;
+
+      .stack {
+        width: auto;
+        padding: var(--space-1) var(--space-2);
+        font-size: var(--text-8);
+        background: none;
+        border: 0;
+
+        &:hover {
+          translate: none;
+        }
+      }
+    }
+  }
+
   &.sub-add {
     color: var(--muted-foreground);
 
