@@ -111,6 +111,12 @@ export function renameCategory(id, name) {
   commit();
 }
 
+export function setCategoryNotes(id, notes) {
+  const c = state.categories.find(c => c.id === id);
+  if (c) c.notes = notes;
+  commit();
+}
+
 export function deleteCategory(id) {
   state.categories = state.categories.filter(c => c.id !== id);
   state.tasks = state.tasks.filter(t => t.categoryId !== id);
@@ -197,7 +203,8 @@ export function setParent(id, parentId, fields = {}) {
   return true;
 }
 
-// Merge imported data: categories are matched by name, and tasks that already
+// Merge imported data: categories are matched by name (keeping existing
+// category notes, or taking the imported ones if there are none), and tasks that already
 // exist (same category, parent, title and done state) are skipped. A skipped
 // task's subtasks are merged under the existing task.
 export function merge(incoming) {
@@ -211,6 +218,7 @@ export function merge(incoming) {
       state.categories.push(ex);
       byName.set(c.name.toLowerCase(), ex);
     }
+    if (!ex.notes && c.notes) ex.notes = c.notes;
     catMap.set(c.id, ex.id);
   }
 

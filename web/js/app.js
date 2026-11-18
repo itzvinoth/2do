@@ -207,6 +207,7 @@ function dueChip(due, act) {
 
 function renderTasks(main, catId) {
   const { categories, tasks } = store.get();
+  const cat = categories.find(c => c.id === catId);
   const list = rootsFor(catId);
   const done = finishedRoots(catId);
 
@@ -218,6 +219,8 @@ function renderTasks(main, catId) {
       <div class="view-head">
         <h1>${esc(catId ? categoryName(catId) : 'All tasks')}</h1>
         ${catId ? `
+        <span class="actions">
+        <button class="ghost icon" data-act="cat-notes" title="${cat.notes ? 'Edit notes' : 'Add notes'}">${icon('notes')}</button>
         <ot-dropdown>
           <button class="ghost icon" popovertarget="cat-menu" title="Category options">${icon('more')}</button>
           <menu popover id="cat-menu">
@@ -225,8 +228,11 @@ function renderTasks(main, catId) {
             <button role="menuitem" data-act="rename-cat">${icon('pencil')} Rename</button>
             <button role="menuitem" data-act="delete-cat" class="danger">${icon('trash')} Delete</button>
           </menu>
-        </ot-dropdown>` : ''}
+        </ot-dropdown>
+        </span>` : ''}
       </div>
+
+      ${cat?.notes ? `<div class="cat-notes rich" data-act="cat-notes" title="Click to edit">${mdToHtml(cat.notes)}</div>` : ''}
 
       <ul class="tasks">${list.map(t => taskTree(t, 0, !catId)).join('')}</ul>
 
@@ -530,14 +536,30 @@ function editTask(id, focus = 'notes') {
     });
   }, { once: true });
   dlg.showModal();
-  if (focus === 'notes') {
-    // Cursor at the end of the notes.
-    notes.focus();
-    getSelection().selectAllChildren(notes);
-    getSelection().collapseToEnd();
-  } else {
-    f[focus].focus();
-  }
+  if (focus === 'notes') focusEnd(notes);
+  else f[focus].focus();
+}
+
+// Category notes, shown at the top of the category's page.
+function editCategoryNotes(id) {
+  const c = store.get().categories.find(c => c.id === id);
+  const dlg = $('#dlg-cat-notes');
+  const notes = $('#cat-notes');
+  $('[data-title]', dlg).textContent = `${c.name} notes`;
+  notes.innerHTML = c.notes ? mdToHtml(c.notes) : '';
+
+  dlg.returnValue = '';
+  dlg.addEventListener('close', () => {
+    if (dlg.returnValue === 'save') store.setCategoryNotes(id, htmlToMd(notes));
+  }, { once: true });
+  dlg.showModal();
+  focusEnd(notes);
+}
+
+function focusEnd(el) {
+  el.focus();
+  getSelection().selectAllChildren(el);
+  getSelection().collapseToEnd();
 }
 
 // Import / export.
@@ -752,8 +774,9 @@ function bind() {
   });
 
   main.addEventListener('click', async e => {
-    // Links in titles open in the browser instead of starting a rename.
-    const a = e.target.closest('.title a');
+    // Links in titles and category notes open in the browser instead of
+    // starting an edit.
+    const a = e.target.closest('.title a, .cat-notes a');
     if (a) {
       e.preventDefault();
       store.openLink(a.href);
@@ -844,10 +867,14 @@ function bind() {
         break;
       }
 
+      case 'cat-notes':
+        editCategoryNotes(route().id);
+        break;
+
       case 'copy-cat': {
         const cid = route().id;
         const roots = rootsFor(cid);
-        copyText(categoryToMarkdown(categoryName(cid), roots, store.get().tasks),
+        copyText(categoryToMarkdown(store.get().categories.find(c => c.id === cid), roots, store.get().tasks),
           `${roots.length} open task(s) copied as Markdown.`);
         break;
       }
@@ -967,13 +994,18 @@ async function init() {
     setTheme(b.dataset.theme);
     $('#theme-menu').hidePopover();
   });
-  setupEditor($('#notes'), $('#dlg-task .toolbar'), async () => {
+  const askUrl = async () => {
     const { action, value } = await ask({
       title: 'Add link', input: '', maxLength: 2000,
       buttons: [{ label: 'Add', value: 'ok' }],
     });
     return action === 'ok' ? value : '';
-  });
+  };
+  setupEditor($('#notes'), $('#dlg-task .toolbar'), askUrl);
+  // The category notes dialog gets a copy of the task dialog's toolbar.
+  const toolbar = $('#dlg-task .toolbar').cloneNode(true);
+  $('#dlg-cat-notes .editor').prepend(toolbar);
+  setupEditor($('#cat-notes'), toolbar, askUrl);
   render();
 
   if ('serviceWorker' in navigator) {

@@ -10,7 +10,7 @@ It runs as a Linux desktop app or as an installable PWA.
 - Subtasks, nested as deep as you like
 - Mark tasks you've started as **In progress**
 - Finished tasks move to the Archive, grouped by the day they were finished. You can reopen them
-- Notes with basic formatting: bold, italic, code, lists and links
+- Notes with basic formatting: bold, italic, code, lists and links, for tasks and for each category
 - Copy a task or a whole category as Markdown
 - 10 soft color themes, light and dark
 - Import and export everything as a Markdown (`.md`) file ([format](#import-file-format-md))
@@ -147,8 +147,12 @@ list to show its finished tasks right there, grouped the same way; click it agai
 
 **Categories.** Type a name in **New category** in the sidebar and press Enter. To rename or delete a category, open
 it and use the ⋮ menu. Deleting a category also deletes its tasks. The same menu has **Copy as Markdown**, which
-copies the category's open tasks and their subtasks under a `## Category` heading. Finished tasks in the Archive are
-left out.
+copies the category's notes, open tasks and their subtasks under a `## Category` heading. Finished tasks in the
+Archive are left out.
+
+**Category notes.** Open a category and click the notes icon (three lines) next to the ⋮ menu to write notes about it:
+goals, links, contacts, anything. They use the same editor and formatting as task notes, and show at the top of the
+category's page; click them to edit, or click a link in them to open it.
 
 **Color theme.** Click the palette icon at the top right and pick one of 10 themes: Classic (follows your
 system's light or dark mode), Paper, Sage, Mist, Blush, Lavender and Peach (light), or Slate, Forest and Dusk (dark).
@@ -165,6 +169,8 @@ format 2do uses when you export. To try it, import [`examples/import-sample.md`]
 
 ```md
 ## Personal
+
+> Errands and paperwork. Passport office: [booking site](https://example.com).
 
 - [ ] Renew passport `priority:high` `due:2026-12-01`
   > Book an appointment first.
@@ -187,6 +193,7 @@ The finished `[x]` top-level task goes straight to the archive; the finished sub
 | Line | Meaning |
 |---|---|
 | `## Name` | Starts a category called *Name*. A repeated heading continues the same category, ignoring case. Tasks that appear before the first `##` heading go into a category called **Imported**. |
+| `> Some text` | Not indented: a note for the category, usually right below its heading. Each `>` line is one line of the note, and a `>` on its own is a blank line. Same formatting as task notes. |
 | `- [ ] Title` | An open task. `*` and `+` bullets work too. |
 | `- [x] Title` | A finished task, which goes to the archive. `[X]` works too. |
 | `- [/] Title` | An in-progress task (the convention used by Obsidian and other apps). 2do exports these as `- [ ]` with a `started` tag instead, so the file still renders as a normal checklist elsewhere. |
@@ -216,8 +223,8 @@ After you pick a file, 2do shows how many tasks and categories it found and asks
 
 - **Merge** adds the tasks to your existing data. Categories with the same name (ignoring case) are combined, and a
   task is skipped if the same category already has a task with the same title, parent and done state. Subtasks of a
-  skipped task are merged under the existing one. Importing the same file
-  twice doesn't create duplicates.
+  skipped task are merged under the existing one. A combined category keeps its notes, or takes the file's if it had
+  none. Importing the same file twice doesn't create duplicates.
 - **Replace** deletes all your current categories and tasks, then loads the file.
 
 If you're not sure which to choose, export first so you have a backup.

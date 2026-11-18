@@ -132,6 +132,23 @@
     </form>
   </dialog>
 
+  <!-- Category notes. The formatting toolbar is copied in from the task dialog. -->
+  <dialog id="dlg-cat-notes">
+    <form method="dialog">
+      <header>
+        <h3 data-title></h3>
+      </header>
+      <div class="editor">
+        <div id="cat-notes" class="editor-body" contenteditable="true" role="textbox" aria-multiline="true"
+          aria-label="Category notes" data-placeholder="Goals, links, anything about this category&hellip;"></div>
+      </div>
+      <footer>
+        <button type="button" class="ghost" commandfor="dlg-cat-notes" command="close">Cancel</button>
+        <button value="save">Save</button>
+      </footer>
+    </form>
+  </dialog>
+
   <!-- Generic confirm / prompt. -->
   <dialog id="dlg-ask">
     <form method="dialog">

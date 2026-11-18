@@ -5,6 +5,8 @@
 //
 //   ## Personal
 //
+//   > Optional category notes, quoted and not indented.
+//
 //   - [ ] Buy milk `priority:high` `due:2026-11-10`
 //     > Optional notes, indented and quoted.
 //     - [ ] Check the fridge first
@@ -25,6 +27,7 @@ export function toMarkdown({ categories, tasks }) {
 
   for (const c of categories) {
     out.push(`## ${c.name}`, '');
+    writeNotes(out, c.notes);
     children(tasks, null).filter(t => t.categoryId === c.id).forEach(t => write(out, tasks, t, 0, true));
     out.push('');
   }
@@ -40,9 +43,10 @@ export function taskToMarkdown(task, tasks) {
   return out.join('\n');
 }
 
-// A category's open tasks under its heading, for copying.
-export function categoryToMarkdown(name, roots, tasks) {
-  const out = [`## ${name}`, ''];
+// A category's notes and open tasks under its heading, for copying.
+export function categoryToMarkdown(cat, roots, tasks) {
+  const out = [`## ${cat.name}`, ''];
+  writeNotes(out, cat.notes);
   roots.forEach(t => write(out, tasks, t, 0, false));
   return out.join('\n');
 }
@@ -51,6 +55,14 @@ export function categoryToMarkdown(name, roots, tasks) {
 function children(tasks, parentId) {
   return tasks.filter(t => (t.parentId || null) === parentId)
     .sort((a, b) => !!a.completedAt - !!b.completedAt);
+}
+
+// Category notes as a quote block; blank lines stay as empty quote lines so
+// paragraphs survive.
+function writeNotes(out, notes) {
+  if (!notes) return;
+  notes.split('\n').forEach(n => out.push(n ? `> ${n}` : '>'));
+  out.push('');
 }
 
 function write(out, tasks, t, depth, full) {
@@ -82,7 +94,7 @@ export function fromMarkdown(text) {
   const category = name => {
     let c = categories.find(c => c.name.toLowerCase() === name.toLowerCase());
     if (!c) {
-      c = { id: uid(), name };
+      c = { id: uid(), name, notes: '' };
       categories.push(c);
     }
     return c;
@@ -97,6 +109,13 @@ export function fromMarkdown(text) {
       cat = category(line.slice(3).trim() || 'Imported');
       last = null;
       stack = [];
+      continue;
+    }
+
+    // Quoted lines that aren't indented are the category's notes.
+    if (cat && indent === 0 && trimmed.startsWith('>')) {
+      cat.notes += (cat.notes ? '\n' : '') + trimmed.replace(/^>\s?/, '');
+      last = null;
       continue;
     }
 
@@ -146,6 +165,7 @@ export function fromMarkdown(text) {
     stack.push({ indent, task: last });
   }
 
+  categories.forEach(c => c.notes = c.notes.trim());
   return { categories, tasks };
 }
 
