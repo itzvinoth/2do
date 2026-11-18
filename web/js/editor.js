@@ -4,6 +4,8 @@
 // editor's HTML is always rebuilt from that Markdown (with everything
 // escaped), so stored notes can't inject markup.
 
+import { openLink } from './store.js';
+
 const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const safeUrl = url => /^(https?:|mailto:)/i.test(url);
 
@@ -202,7 +204,7 @@ export function setupEditor(el, toolbar, askUrl) {
   // Ctrl+click opens a link; a plain click places the cursor as usual.
   el.addEventListener('click', e => {
     const a = e.target.closest('a');
-    if (a && (e.ctrlKey || e.metaKey) && safeUrl(a.href)) window.open(a.href, '_blank', 'noopener');
+    if (a && (e.ctrlKey || e.metaKey) && safeUrl(a.href)) openLink(a.href);
   });
 
   const updateToolbar = () => {

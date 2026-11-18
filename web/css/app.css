@@ -302,6 +302,18 @@ ot-dropdown menu[popover] {
     padding-block: var(--space-2);
   }
 
+  .title a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+    text-underline-offset: 0.15em;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration-color: currentColor;
+    }
+  }
+
   .title code {
     padding: 0.05em 0.35em;
     font-size: 0.875em;

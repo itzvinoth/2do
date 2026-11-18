@@ -15,6 +15,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -90,6 +91,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/data", st.handle)
+	mux.HandleFunc("/api/open", openLink)
 	files := http.FileServerFS(sub)
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Always revalidate so that a new build's assets are picked up.
@@ -200,6 +202,34 @@ func (s *store) handle(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// openLink opens a link from the app in the default browser rather than in
+// the app window's own browser profile. Only web and mail links are opened,
+// so a request can't run local files or other URL handlers.
+func openLink(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	b, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8<<10))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusRequestEntityTooLarge)
+		return
+	}
+	u, err := url.Parse(string(b))
+	if err != nil || !(u.Scheme == "https" || u.Scheme == "http" || u.Scheme == "mailto") {
+		http.Error(w, "unsupported link", http.StatusBadRequest)
+		return
+	}
+
+	cmd := exec.Command("xdg-open", u.String())
+	if err := cmd.Start(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	go func() { _ = cmd.Wait() }()
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // openWindow launches the first Chromium-family browser found in app mode

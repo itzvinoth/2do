@@ -65,6 +65,21 @@ function persist() {
   }, 150);
 }
 
+// Opens a link from the app. The desktop app's server opens it in the default
+// browser, since its own window is a separate browser profile; otherwise (or
+// if that fails) it opens in a new browser window as usual.
+export async function openLink(url) {
+  if (backend === 'file') {
+    try {
+      const res = await fetch('api/open', { method: 'POST', headers: { 'X-2do': '1' }, body: url });
+      if (res.ok) return;
+    } catch {
+      // Fall through.
+    }
+  }
+  window.open(url, '_blank', 'noopener');
+}
+
 export function onChange(fn) {
   listeners.push(fn);
 }

@@ -11,8 +11,34 @@ const PRIORITY = {
 };
 
 const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
-// Task titles are plain text, except that `backticks` render as inline code.
-const fmtTitle = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+// Task titles are plain text, except that `backticks` render as inline code
+// and links, [text](url) or a bare https://… address, are clickable. Bare
+// links are shown without the https://, and trailing punctuation, or a ")"
+// with no "(" in the link, is left out.
+// Titles inside buttons pass links = false, since links can't nest in them.
+const reTitle = /`([^`]+)`|\[([^\]]+)\]\(((?:https?:|mailto:)[^)\s]+)\)|(https?:\/\/[^\s<>`]*[^\s<>`.,;:!?'"\]])/i;
+
+function fmtTitle(s, links = true) {
+  const link = (url, text) => links
+    ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="${esc(url)}">${text}</a>` : text;
+  let out = '';
+  let m;
+  while ((m = s.match(reTitle))) {
+    let len = m[0].length;
+    out += esc(s.slice(0, m.index));
+    if (m[1]) out += `<code>${esc(m[1])}</code>`;
+    else if (m[2]) out += link(m[3], esc(m[2]));
+    else {
+      let url = m[4];
+      const count = c => url.split(c).length;
+      while (url.endsWith(')') && count('(') < count(')')) url = url.slice(0, -1);
+      len = url.length;
+      out += link(url, esc(url.replace(/^https?:\/\/(www\.)?/i, '')));
+    }
+    s = s.slice(m.index + len);
+  }
+  return out + esc(s);
+}
 const icon = name => `<svg class="i" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 
 // Dates. Due dates are local YYYY-MM-DD strings.
@@ -238,7 +264,7 @@ function subsDoneStack(id, done, depth) {
       <button class="stack" data-act="toggle-sub-done" aria-expanded="${shown}"
         title="${shown ? 'Hide' : 'Show'} ${done.length} finished subtasks">
         ${shown ? `${icon('chevron-up')} Show less` : `
-        ${icon('check')}<span class="title">${fmtTitle(top.title)}</span>
+        ${icon('check')}<span class="title">${fmtTitle(top.title, false)}</span>
         <span class="more">+${done.length - 1} finished</span>`}
       </button>
     </li>`;
@@ -296,7 +322,7 @@ function addRow(catId) {
       <div class="extras">
         ${parent ? `
         <button type="button" class="chip parent" data-act="draft-unnest" title="Subtask of “${esc(parent.title)}”. Click or press Shift+Tab to move it out">
-          ${icon('list-plus')}<span>${fmtTitle(parent.title)}</span>${icon('x')}
+          ${icon('list-plus')}<span>${fmtTitle(parent.title, false)}</span>${icon('x')}
         </button>` : canNest ? `<span class="key-hint"><kbd>Tab</kbd> subtask</span>` : ''}
         ${catId || parent ? '' : `
         <ot-dropdown>
@@ -726,6 +752,13 @@ function bind() {
   });
 
   main.addEventListener('click', async e => {
+    // Links in titles open in the browser instead of starting a rename.
+    const a = e.target.closest('.title a');
+    if (a) {
+      e.preventDefault();
+      store.openLink(a.href);
+      return;
+    }
     const el = e.target.closest('[data-act]');
     if (!el) return;
     const id = el.closest('.task')?.dataset.id;

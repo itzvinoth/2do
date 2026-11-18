@@ -115,7 +115,9 @@ Press **Esc** to clear the input.
 | Copy | Two-squares icon. Copies the task and all its subtasks as a Markdown checklist, ready to paste into notes or chat, or to import elsewhere (see [Import file format](#import-file-format-md)). Also works in the Archive |
 | Delete | Trash icon |
 
-Tasks are sorted with in-progress tasks first, then by priority, then by due date. `` `Backticks` `` in a title are shown as inline code.
+Tasks are sorted with in-progress tasks first, then by priority, then by due date. `` `Backticks` `` in a title are shown as inline code, and links are clickable: paste a
+`https://…` address as is (it's shown without the `https://`), or write `[text](https://…)` to show your own text.
+Clicking a link opens it in your default browser; clicking anywhere else on the title edits it.
 
 **Subtasks.** The quickest way is from the **Add a task** row, like an outline: add a task, press **Tab**, and the row
 moves in under it. Type subtasks and press Enter after each; the row stays at that level. Press **Tab** again to nest
