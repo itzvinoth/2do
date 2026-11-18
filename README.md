@@ -117,14 +117,20 @@ Press **Esc** to clear the input.
 
 Tasks are sorted with in-progress tasks first, then by priority, then by due date. `` `Backticks` `` in a title are shown as inline code.
 
-**Subtasks.** Hover over a task and click the add-subtask icon (lines with a +). Type the subtask and press Enter. The
-input stays open, so you can add several in a row. Press Esc when you're done.
+**Subtasks.** The quickest way is from the **Add a task** row, like an outline: add a task, press **Tab**, and the row
+moves in under it. Type subtasks and press Enter after each; the row stays at that level. Press **Tab** again to nest
+under the subtask you just added, and **Shift+Tab** (or Esc on an empty row) to move back out. A chip in the row shows
+which task you're adding to; click its × to go back to the top level.
+
+You can also hover over a task and click the add-subtask icon (lines with a +) to type subtasks right below it. Press
+Esc when you're done. On touch screens, this icon is always shown.
 
 | Action | How |
 |---|---|
 | Collapse or expand subtasks | Click the `2/5` progress chip next to the parent task |
 | Make a task a subtask of the one above it | Click its title to rename it, then press **Tab** |
 | Move a subtask up a level | Click its title, then press **Shift+Tab** |
+| Make a subtask a main task | Hover over it and click the corner-arrow icon. It becomes a top-level task in the same category, keeping its own subtasks. The snackbar offers **Undo** |
 | Finish a subtask | Tick it. It moves below its parent's open subtasks, struck through, and the progress chip updates. Once more than two are finished, they fold into a stack of cards showing the latest one |
 | See finished subtasks | Click the stack to expand it. Click **Show less** (in the same spot) to fold it again |
 | Reopen a subtask | Untick it. This also reopens its parent if the parent was finished |

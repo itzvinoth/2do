@@ -55,9 +55,11 @@ function route() {
 }
 
 // The task being typed in the add row, and the inline subtask input
-// ({parentId, title}). Kept across re-renders.
-const draft = { title: '', priority: 'low', due: null, categoryId: null };
+// ({parentId, title}). Kept across re-renders. A draft with a parentId is
+// added as a subtask; lastAddedId is what Tab nests the next one under.
+const draft = { title: '', priority: 'low', due: null, categoryId: null, parentId: null };
 let subDraft = null;
+let lastAddedId = null;
 
 // Element to focus, or task to start renaming, after the next render.
 let focusId = 'add-title';
@@ -133,6 +135,21 @@ const rootsFor = catId => store.get().tasks
 const childrenOf = id => store.get().tasks.filter(t => t.parentId === id)
   .sort((a, b) => !!a.completedAt - !!b.completedAt || sortOpen(a, b));
 
+// Open tasks as they appear in a view, top to bottom.
+const visibleOpen = catId => rootsFor(catId).flatMap(function walk(t) {
+  return [t, ...(t.collapsed ? [] : childrenOf(t.id).filter(c => !c.completedAt).flatMap(walk))];
+});
+
+// The task the add row nests under with Tab, and its ancestors, root first:
+// the task just added from the add row, or else the last one in the list.
+function nestChain(catId) {
+  const open = visibleOpen(catId);
+  let t = open.find(t => t.id === lastAddedId) || open.at(-1);
+  const chain = [];
+  for (; t; t = store.find(t.parentId)) chain.unshift(t);
+  return chain;
+}
+
 const categoryName = id => store.get().categories.find(c => c.id === id)?.name ?? '?';
 
 // Priority flag with a dropdown to change it. `act` is the menu action.
@@ -168,6 +185,7 @@ function renderTasks(main, catId) {
   const done = finishedRoots(catId);
 
   if (!categories.some(c => c.id === draft.categoryId)) draft.categoryId = categories[0]?.id ?? null;
+  if (draft.parentId && !visibleOpen(catId).some(t => t.id === draft.parentId)) draft.parentId = null;
 
   main.innerHTML = `
     <div class="page">
@@ -247,6 +265,7 @@ function taskRow(t, depth, showCat) {
       ${t.completedAt ? '' : `
       <button class="ghost icon small reveal" data-act="progress" title="${inProgress(t) ? 'Stop progress' : 'Start progress'}">${icon(inProgress(t) ? 'pause' : 'play')}</button>`}
       <button class="ghost icon small reveal" data-act="add-sub" title="Add subtask">${icon('list-plus')}</button>
+      ${depth ? `<button class="ghost icon small reveal" data-act="promote" title="Convert to main task">${icon('promote')}</button>` : ''}
       <button class="ghost icon small reveal" data-act="copy" title="Copy as Markdown">${icon('copy')}</button>
       <button class="ghost icon small reveal" data-act="edit" title="Details">${icon('pencil')}</button>
       <button class="ghost icon small reveal danger" data-act="delete" title="Delete">${icon('trash')}</button>
@@ -262,13 +281,24 @@ function subAddRow(depth) {
     </li>`;
 }
 
+// Tab nests the new task under the task above it, Shift+Tab moves it back out.
 function addRow(catId) {
+  const parent = store.find(draft.parentId);
+  let depth = 0;
+  for (let t = parent; t; t = store.find(t.parentId)) depth++;
+  const canNest = nestChain(catId).length > depth;
+
   return `
-    <form id="form-task" class="add-row" autocomplete="off">
-      ${icon('plus')}
-      <input id="add-title" name="title" placeholder="Add a task" maxlength="500" value="${esc(draft.title)}" aria-label="New task">
+    <form id="form-task" class="add-row ${parent ? 'nested' : ''}" autocomplete="off" style="--depth: ${depth}">
+      ${icon(parent ? 'corner' : 'plus')}
+      <input id="add-title" name="title" placeholder="${parent ? 'Add a subtask' : 'Add a task'}" maxlength="500"
+        value="${esc(draft.title)}" aria-label="${parent ? 'New subtask' : 'New task'}">
       <div class="extras">
-        ${catId ? '' : `
+        ${parent ? `
+        <button type="button" class="chip parent" data-act="draft-unnest" title="Subtask of “${esc(parent.title)}”. Click or press Shift+Tab to move it out">
+          ${icon('list-plus')}<span>${fmtTitle(parent.title)}</span>${icon('x')}
+        </button>` : canNest ? `<span class="key-hint"><kbd>Tab</kbd> subtask</span>` : ''}
+        ${catId || parent ? '' : `
         <ot-dropdown>
           <button type="button" class="chip" popovertarget="cat-pick" title="Category">${icon('tag')}<span>${esc(categoryName(draft.categoryId))}</span></button>
           <menu popover id="cat-pick">
@@ -545,15 +575,33 @@ async function importMarkdown(file) {
 
 // Events.
 
+// After adding, the add row stays at the same level, so several subtasks
+// can be typed in a row.
 function addFromDraft() {
   const title = draft.title.trim();
-  const catId = route().id || draft.categoryId;
+  const parent = store.find(draft.parentId);
+  const catId = parent?.categoryId || route().id || draft.categoryId;
   if (!title || !catId) return;
 
-  store.addTask({ title, priority: draft.priority, due: draft.due, categoryId: catId });
+  if (parent?.collapsed) parent.collapsed = false;
+  lastAddedId = store.addTask({ title, priority: draft.priority, due: draft.due, categoryId: catId, parentId: parent?.id }).id;
   Object.assign(draft, { title: '', priority: 'low', due: null });
   focusId = 'add-title';
   render();
+}
+
+// Move the add row one level in (nest under the next task of nestChain) or
+// out. Returns false if it can't move.
+function nestDraft(inward) {
+  const chain = nestChain(route().id);
+  const i = chain.findIndex(t => t.id === draft.parentId);
+  const next = inward ? chain[i + 1] : draft.parentId && chain[i - 1] || null;
+  if (inward ? !next : !draft.parentId) return false;
+
+  draft.parentId = next?.id ?? null;
+  focusId = 'add-title';
+  render();
+  return true;
 }
 
 function addSubFromDraft() {
@@ -571,6 +619,7 @@ function bind() {
     // Close the sidebar overlay on mobile after navigating.
     $('[data-sidebar-layout]').removeAttribute('data-sidebar-open');
     draft.title = '';
+    draft.parentId = lastAddedId = null;
     subDraft = null;
     focusId = 'add-title';
     render();
@@ -605,8 +654,11 @@ function bind() {
       if (e.key === 'Enter') {
         e.preventDefault();
         addFromDraft();
+      } else if (e.key === 'Tab' && nestDraft(!e.shiftKey)) {
+        e.preventDefault();
       } else if (e.key === 'Escape') {
-        draft.title = e.target.value = '';
+        if (draft.title) draft.title = e.target.value = '';
+        else nestDraft(false);
       }
     }
 
@@ -697,6 +749,12 @@ function bind() {
         store.updateTask(id, { priority: el.dataset.value });
         break;
 
+      case 'draft-unnest':
+        draft.parentId = null;
+        focusId = 'add-title';
+        render();
+        break;
+
       case 'draft-priority':
       case 'draft-cat':
         draft[el.dataset.act === 'draft-cat' ? 'categoryId' : 'priority'] = el.dataset.value;
@@ -736,6 +794,15 @@ function bind() {
         if (store.find(id).collapsed) store.updateTask(id, { collapsed: false });
         else render();
         break;
+
+      // A subtask becomes a top-level task in the same category, taking its
+      // own subtasks with it.
+      case 'promote': {
+        const parentId = store.find(id).parentId;
+        store.setParent(id, null);
+        toastAction('Converted to a main task.', 'Undo', () => store.setParent(id, parentId));
+        break;
+      }
 
       case 'copy': {
         const n = store.descendants(id).length;

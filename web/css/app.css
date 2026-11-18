@@ -138,7 +138,8 @@ main {
   padding: var(--space-8) var(--space-6) var(--space-16);
 }
 
-/* Drag handles on both edges of the page; a line shows on hover. */
+/* Drag handles on both edges of the page: a faint grip that stays in the
+   middle of the screen, and a full-height line on hover. */
 .page-resize {
   position: absolute;
   inset-block: 0;
@@ -148,6 +149,23 @@ main {
 
   &.start { left: 0; }
   &.end { right: 0; }
+
+  &::before {
+    content: '';
+    position: sticky;
+    top: calc(50% - 1.25rem);
+    display: block;
+    width: 4px;
+    height: 2.5rem;
+    margin-inline: auto;
+    border-radius: var(--radius-full);
+    background-color: var(--border);
+    transition: background-color var(--transition-fast);
+  }
+
+  &:hover::before {
+    background-color: var(--muted-foreground);
+  }
 
   &::after {
     content: '';
@@ -173,6 +191,10 @@ main {
 
   .page-resize::after {
     opacity: 0.6;
+  }
+
+  .page-resize::before {
+    background-color: var(--muted-foreground);
   }
 }
 
@@ -596,6 +618,32 @@ button.chip.progress {
 
   &.small input:not(.picker) {
     font-size: var(--text-7);
+  }
+
+  /* Adding a subtask: indented like one, with the parent shown as a chip. */
+  &.nested {
+    padding-inline-start: calc(var(--space-2) + var(--depth) * var(--indent));
+
+    input:not(.picker) {
+      font-size: var(--text-7);
+    }
+  }
+
+  .chip.parent span {
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .key-hint {
+    font-size: var(--text-8);
+    color: var(--faint-foreground);
+    white-space: nowrap;
+
+    kbd {
+      font-size: inherit;
+    }
   }
 
   /* Priority, due date and category are secondary: only shown while adding. */

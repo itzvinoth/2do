@@ -105,7 +105,7 @@ export function deleteCategory(id) {
 // Tasks. A task with a parentId is a subtask; subtasks always share their
 // root task's category.
 export function addTask(t) {
-  state.tasks.push({
+  const task = {
     id: uid(),
     parentId: t.parentId || null,
     title: t.title,
@@ -115,8 +115,10 @@ export function addTask(t) {
     categoryId: t.categoryId,
     createdAt: new Date().toISOString(),
     completedAt: null,
-  });
+  };
+  state.tasks.push(task);
   commit();
+  return task;
 }
 
 export const find = id => state.tasks.find(t => t.id === id);
