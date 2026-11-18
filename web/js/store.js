@@ -40,8 +40,27 @@ function normalize(d) {
   if (!d || !Array.isArray(d.categories) || !Array.isArray(d.tasks)) {
     return emptyState();
   }
+  if (!d.tasks.every(t => typeof t.order === 'number')) numberTasks(d.tasks);
   return d;
 }
+
+// Tasks are kept in a manual order: each list of siblings is sorted by
+// `order`. Data from before that has none, so it's numbered in the order it
+// used to be sorted in (in progress, priority, due date, age), so that
+// nothing moves.
+function numberTasks(tasks) {
+  const key = t => [!(t.startedAt && !t.completedAt), PRIORITIES.indexOf(t.priority), t.due || '9999', t.createdAt];
+  const cmp = (a, b) => {
+    const [x, y] = [key(a), key(b)];
+    const i = x.findIndex((v, i) => v !== y[i]);
+    return i < 0 ? 0 : x[i] < y[i] ? -1 : 1;
+  };
+  const groups = Map.groupBy(tasks, t => t.parentId || null);
+  for (const list of groups.values()) list.sort(cmp).forEach((t, i) => t.order = i);
+}
+
+// The order that puts a task last among the children of parentId.
+const nextOrder = parentId => Math.max(-1, ...state.tasks.filter(t => t.parentId === parentId).map(t => t.order)) + 1;
 
 function persist() {
   clearTimeout(saveTimer);
@@ -134,6 +153,7 @@ export function addTask(t) {
     priority: t.priority || 'low',
     due: t.due || null,
     categoryId: t.categoryId,
+    order: nextOrder(t.parentId || null),
     createdAt: new Date().toISOString(),
     completedAt: null,
   };
@@ -187,12 +207,24 @@ export function reopenMany(ids) {
   commit();
 }
 
-// Move a task under a new parent (or to the top level with null), optionally
-// updating other fields at the same time. Returns false if the move is invalid.
+// Move a task to before another of its siblings, or to the end with null.
+export function moveTask(id, beforeId) {
+  const t = find(id);
+  const list = state.tasks.filter(s => s.parentId === t.parentId && s !== t).sort((a, b) => a.order - b.order);
+  const i = list.findIndex(s => s.id === beforeId);
+  list.splice(i < 0 ? list.length : i, 0, t);
+  list.forEach((s, n) => s.order = n);
+  commit();
+}
+
+// Move a task under a new parent (or to the top level with null), as its last
+// child, optionally updating other fields at the same time. Returns false if
+// the move is invalid.
 export function setParent(id, parentId, fields = {}) {
   const t = find(id);
   if (!t || parentId === id || descendants(id).some(d => d.id === parentId)) return false;
   Object.assign(t, fields);
+  if (t.parentId !== parentId) t.order = nextOrder(parentId);
   t.parentId = parentId;
   if (parentId) {
     const p = find(parentId);
@@ -235,6 +267,7 @@ export function merge(incoming) {
       categoryId: catMap.get(t.categoryId),
       parentId: t.parentId ? taskMap.get(t.parentId) : null,
     };
+    task.order = nextOrder(task.parentId);
 
     const dup = existing.get(key(task));
     if (dup) {

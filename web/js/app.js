@@ -5,9 +5,9 @@ import { mdToHtml, htmlToMd, setupEditor } from './editor.js';
 const $ = (sel, el = document) => el.querySelector(sel);
 
 const PRIORITY = {
-  high: { label: 'High', rank: 0 },
-  medium: { label: 'Medium', rank: 1 },
-  low: { label: 'Low', rank: 2 },
+  high: { label: 'High' },
+  medium: { label: 'Medium' },
+  low: { label: 'Low' },
 };
 
 const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
@@ -87,9 +87,11 @@ const draft = { title: '', priority: 'low', due: null, categoryId: null, parentI
 let subDraft = null;
 let lastAddedId = null;
 
-// Element to focus, or task to start renaming, after the next render.
+// Element to focus, task to start renaming, or task whose drag handle to
+// focus (after moving it with the keyboard), after the next render.
 let focusId = 'add-title';
 let renameId = null;
+let dragFocusId = null;
 let archiveFilter = '';
 
 // Whether a task list shows its finished tasks below it, and the tasks whose
@@ -120,6 +122,10 @@ function render() {
     renameId = null;
     if (span) startRename(span);
   }
+  if (dragFocusId) {
+    $(`.task[data-id="${dragFocusId}"] .drag`)?.focus();
+    dragFocusId = null;
+  }
 }
 
 function renderSidebar() {
@@ -145,21 +151,16 @@ function renderSidebar() {
 // A task you've started and not finished yet.
 const inProgress = t => !!t.startedAt && !t.completedAt;
 
-// In-progress tasks first, then by priority, due date and age.
-function sortOpen(a, b) {
-  return inProgress(b) - inProgress(a)
-    || PRIORITY[a.priority].rank - PRIORITY[b.priority].rank
-    || (a.due || '9999').localeCompare(b.due || '9999')
-    || a.createdAt.localeCompare(b.createdAt);
-}
+// Tasks are in the order you put them in (store.moveTask).
+const byOrder = (a, b) => a.order - b.order;
 
 // Open top-level tasks shown in a view, in display order.
 const rootsFor = catId => store.get().tasks
-  .filter(t => !t.parentId && !t.completedAt && (!catId || t.categoryId === catId)).sort(sortOpen);
+  .filter(t => !t.parentId && !t.completedAt && (!catId || t.categoryId === catId)).sort(byOrder);
 
-// Subtasks of a task: open ones by priority, then finished ones.
+// Subtasks of a task: open ones, then finished ones.
 const childrenOf = id => store.get().tasks.filter(t => t.parentId === id)
-  .sort((a, b) => !!a.completedAt - !!b.completedAt || sortOpen(a, b));
+  .sort((a, b) => !!a.completedAt - !!b.completedAt || byOrder(a, b));
 
 // Open tasks as they appear in a view, top to bottom.
 const visibleOpen = catId => rootsFor(catId).flatMap(function walk(t) {
@@ -276,12 +277,17 @@ function subsDoneStack(id, done, depth) {
     </li>`;
 }
 
+// Open tasks have a drag handle and a data-parent, which marks the rows they
+// can be moved among.
 function taskRow(t, depth, showCat) {
   const subs = store.descendants(t.id);
   const nDone = subs.filter(s => s.completedAt).length;
 
   return `
-    <li class="task ${depth ? 'sub' : ''} ${t.completedAt ? 'checked' : ''} ${inProgress(t) ? 'active' : ''}" data-id="${t.id}" style="--depth: ${depth}">
+    <li class="task ${depth ? 'sub' : ''} ${t.completedAt ? 'checked' : ''} ${inProgress(t) ? 'active' : ''}" data-id="${t.id}"
+      ${t.completedAt ? '' : `data-parent="${t.parentId || ''}"`} style="--depth: ${depth}">
+      ${t.completedAt ? '' : `
+      <button class="ghost icon small reveal drag" title="Drag to reorder, or press ↑ ↓" aria-label="Reorder">${icon('grip')}</button>`}
       <input type="checkbox" data-act="complete" ${t.completedAt ? 'checked' : ''} aria-label="Mark as done">
       <span class="title" data-act="rename" title="Click to edit">${fmtTitle(t.title)}</span>
       ${inProgress(t) ? `<span class="status" title="Started ${new Date(t.startedAt).toLocaleString()}"><span class="dot"></span>In progress</span>` : ''}
@@ -924,6 +930,97 @@ function bind() {
   });
 }
 
+// Reordering. A task is dragged by its handle and dropped among its siblings
+// (the open tasks with the same parent); its subtasks move with it. A line
+// shows where it will land. With the handle focused, ↑ and ↓ move it too.
+
+// The open sibling rows a task can be moved among, itself included.
+const siblingRows = row => [...$('#view').querySelectorAll(`.task[data-parent="${row.dataset.parent}"]`)];
+const depthOf = row => parseInt(row.style.getPropertyValue('--depth')) || 0;
+
+// A row and the rows of everything nested under it.
+function subtreeRows(row) {
+  const rows = [row];
+  for (let r = row.nextElementSibling; r?.matches('.task') && depthOf(r) > depthOf(row); r = r.nextElementSibling) rows.push(r);
+  return rows;
+}
+
+function setupDrag() {
+  const main = $('#view');
+  let drag = null;
+
+  // Where the pointer would drop the task: before a sibling, or after the last.
+  function target(y) {
+    const others = drag.siblings.filter(r => r !== drag.row);
+    const before = others.find(r => { const b = r.getBoundingClientRect(); return y < b.top + b.height / 2; }) ?? null;
+    const edge = before ? before.getBoundingClientRect().top : subtreeRows(others.at(-1)).at(-1).getBoundingClientRect().bottom;
+    return { before, edge };
+  }
+
+  main.addEventListener('pointerdown', e => {
+    const handle = e.target.closest('.drag');
+    if (!handle || e.button !== 0) return;
+    const row = handle.closest('.task');
+    const siblings = siblingRows(row);
+    if (siblings.length < 2) return;
+
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    const line = document.createElement('div');
+    line.className = 'drop-line';
+    row.closest('.page').append(line);
+    subtreeRows(row).forEach(r => r.classList.add('dragging'));
+    document.documentElement.classList.add('reordering');
+    drag = { row, siblings, line, before: undefined };
+  });
+
+  main.addEventListener('pointermove', e => {
+    if (!drag) return;
+    // Scroll when dragging near the top or bottom edge.
+    const m = main.getBoundingClientRect();
+    if (e.clientY < m.top + 40) main.scrollBy(0, -12);
+    else if (e.clientY > m.bottom - 40) main.scrollBy(0, 12);
+
+    const { before, edge } = target(e.clientY);
+    drag.before = before;
+    const page = drag.line.parentElement.getBoundingClientRect();
+    const start = $('input[type=checkbox]', drag.row).getBoundingClientRect().left;
+    Object.assign(drag.line.style, {
+      top: `${edge - page.top}px`,
+      left: `${start - page.left}px`,
+      width: `${drag.row.getBoundingClientRect().right - start}px`,
+    });
+  });
+
+  const stop = drop => {
+    if (!drag) return;
+    const { row, siblings, line, before } = drag;
+    drag = null;
+    line.remove();
+    document.documentElement.classList.remove('reordering');
+    subtreeRows(row).forEach(r => r.classList.remove('dragging'));
+
+    // Dropping it right where it was changes nothing.
+    const next = siblings[siblings.indexOf(row) + 1] ?? null;
+    if (drop && before !== undefined && before !== next) store.moveTask(row.dataset.id, before?.dataset.id ?? null);
+  };
+  main.addEventListener('pointerup', () => stop(true));
+  main.addEventListener('pointercancel', () => stop(false));
+
+  main.addEventListener('keydown', e => {
+    if (!e.target.matches('.drag') || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();
+    const row = e.target.closest('.task');
+    const siblings = siblingRows(row);
+    const i = siblings.indexOf(row);
+    if (e.key === 'ArrowUp' ? i === 0 : i === siblings.length - 1) return;
+
+    dragFocusId = row.dataset.id;
+    const before = e.key === 'ArrowUp' ? siblings[i - 1] : siblings[i + 2] ?? null;
+    store.moveTask(row.dataset.id, before?.dataset.id ?? null);
+  });
+}
+
 // Color themes; the palettes are in app.css. '' is Oat's own (Classic).
 const THEMES = [
   ['', 'Classic'], ['paper', 'Paper'], ['sage', 'Sage'], ['mist', 'Mist'], ['blush', 'Blush'],
@@ -988,6 +1085,7 @@ async function init() {
   bind();
   renderThemes();
   setupPageResize();
+  setupDrag();
   $('#theme-menu').addEventListener('click', e => {
     const b = e.target.closest('[data-theme]');
     if (!b) return;

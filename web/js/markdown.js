@@ -51,10 +51,10 @@ export function categoryToMarkdown(cat, roots, tasks) {
   return out.join('\n');
 }
 
-// Open tasks first, then finished ones; otherwise in stored order.
+// Open tasks first, then finished ones, each in their manual order.
 function children(tasks, parentId) {
   return tasks.filter(t => (t.parentId || null) === parentId)
-    .sort((a, b) => !!a.completedAt - !!b.completedAt);
+    .sort((a, b) => !!a.completedAt - !!b.completedAt || a.order - b.order);
 }
 
 // Category notes as a quote block; blank lines stay as empty quote lines so
@@ -157,6 +157,7 @@ export function fromMarkdown(text) {
       priority: PRIORITIES.includes(meta.priority) ? meta.priority : 'low',
       due: reDate.test(meta.due || '') ? meta.due : null,
       categoryId: cat.id,
+      order: tasks.length,
       startedAt: validISO(meta.started) || (m[1] === '/' ? new Date().toISOString() : null),
       createdAt: validISO(meta.created) || new Date().toISOString(),
       completedAt: done ? (validISO(meta.done) || new Date().toISOString()) : null,

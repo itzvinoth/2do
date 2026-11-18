@@ -297,6 +297,7 @@ ot-dropdown menu[popover] {
 }
 
 .task {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -615,6 +616,34 @@ button.chip.progress {
     opacity: 0;
     pointer-events: none;
   }
+}
+
+/* Reordering: the drag handle sits in the gutter left of the checkbox (in the
+   page's padding for top-level tasks), so it takes no room in the row. */
+.task .drag {
+  position: absolute;
+  left: calc(var(--depth, 0) * var(--indent) - 1.25rem);
+  cursor: grab;
+  touch-action: none;
+}
+
+.task.dragging {
+  opacity: 0.4;
+}
+
+.drop-line {
+  position: absolute;
+  z-index: 1;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: var(--radius-full);
+  background-color: var(--progress);
+  pointer-events: none;
+}
+
+.reordering, .reordering * {
+  cursor: grabbing !important;
+  user-select: none;
 }
 
 /* "+ Add a task" row, below the list. */

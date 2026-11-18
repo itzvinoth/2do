@@ -8,6 +8,7 @@ It runs as a Linux desktop app or as an installable PWA.
 - Categories: create as many as you need (Personal, Project X, …)
 - Priorities (high, medium, low) and due dates
 - Subtasks, nested as deep as you like
+- Drag and drop to put tasks and subtasks in your own order
 - Mark tasks you've started as **In progress**
 - Finished tasks move to the Archive, grouped by the day they were finished. You can reopen them
 - Notes with basic formatting: bold, italic, code, lists and links, for tasks and for each category
@@ -114,8 +115,10 @@ Press **Esc** to clear the input.
 | Notes, or move to another category | Pencil icon. Notes have a small formatting toolbar: bold, italic, strikethrough, code, bulleted and numbered lists, and links. Shortcuts: Ctrl+B, Ctrl+I, Ctrl+K for a link, Tab / Shift+Tab to indent a list item. Ctrl+click a link to open it. Pasted text comes in unformatted |
 | Copy | Two-squares icon. Copies the task and all its subtasks as a Markdown checklist, ready to paste into notes or chat, or to import elsewhere (see [Import file format](#import-file-format-md)). Also works in the Archive |
 | Delete | Trash icon |
+| Reorder | Drag the dotted grip that appears to the left of the checkbox. A line shows where the task will land; its subtasks move with it. Tasks move among the tasks at the same level (to nest or un-nest, use Tab / Shift+Tab or **Convert to main task**). With the keyboard, Tab to the grip and press ↑ or ↓ |
 
-Tasks are sorted with in-progress tasks first, then by priority, then by due date. `` `Backticks` `` in a title are shown as inline code, and links are clickable: paste a
+Tasks stay in the order you put them in, and new ones are added at the bottom. Priority and due dates don't move
+them. `` `Backticks` `` in a title are shown as inline code, and links are clickable: paste a
 `https://…` address as is (it's shown without the `https://`), or write `[text](https://…)` to show your own text.
 Clicking a link opens it in your default browser; clicking anywhere else on the title edits it.
 
