@@ -72,13 +72,23 @@ const dueState = due => !due ? '' : due < ymd(new Date()) ? 'overdue' : due === 
 
 const fmtTime = d => d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
-// Routing: #/all, #/archive, #/c/<category id>.
+// Routing: #/all, #/archive, #/c/<category id>, and #/t/<task id> for a
+// task's full-screen view.
 function route() {
   const [, view, id] = location.hash.split('/');
   if (view === 'archive') return { view: 'archive' };
   if (view === 'c' && store.get().categories.some(c => c.id === id)) return { view: 'category', id };
+  if (view === 't' && store.find(id)) return { view: 'task', id };
   return { view: 'all' };
 }
+
+// The task shown full screen, if any.
+const focused = () => { const r = route(); return r.view === 'task' ? store.find(r.id) : null; };
+
+// Where the full-screen view goes back to, and the scroll position there;
+// and the scroll position for the next view (the top if null).
+let back = null;
+let nextScroll = null;
 
 // The task being typed in the add row, and the inline subtask input
 // ({parentId, title}). Kept across re-renders. A draft with a parentId is
@@ -108,6 +118,7 @@ function render() {
   const r = route();
   const main = $('#view');
   if (r.view === 'archive') renderArchive(main);
+  else if (r.view === 'task') renderFocus(main, store.find(r.id));
   else renderTasks(main, r.view === 'category' ? r.id : null);
   main.querySelector('.page').insertAdjacentHTML('afterbegin', `
     <div class="page-resize start" title="Drag to resize, double-click to reset"></div>
@@ -133,13 +144,14 @@ function renderSidebar() {
   const roots = tasks.filter(t => !t.parentId);
   const open = roots.filter(t => !t.completedAt);
   const r = route();
+  const catId = r.view === 'task' ? store.find(r.id).categoryId : r.id;
 
   $('#count-all').textContent = open.length || '';
   $('#count-archive').textContent = (roots.length - open.length) || '';
 
   $('#nav-categories').innerHTML = categories.map(c => {
     const n = open.filter(t => t.categoryId === c.id).length;
-    return `<li><a href="#/c/${c.id}" ${r.id === c.id ? 'aria-current="page"' : ''}>
+    return `<li><a href="#/c/${c.id}" ${catId === c.id ? 'aria-current="page"' : ''}>
       ${icon('tag')}<span class="name">${esc(c.name)}</span><span class="count">${n || ''}</span></a></li>`;
   }).join('');
 
@@ -162,18 +174,26 @@ const rootsFor = catId => store.get().tasks
 const childrenOf = id => store.get().tasks.filter(t => t.parentId === id)
   .sort((a, b) => !!a.completedAt - !!b.completedAt || byOrder(a, b));
 
-// Open tasks as they appear in a view, top to bottom.
-const visibleOpen = catId => rootsFor(catId).flatMap(function walk(t) {
+// Open top-level tasks of the current view; in a task's full-screen view,
+// its open subtasks.
+function viewRoots() {
+  const r = route();
+  return r.view === 'task' ? childrenOf(r.id).filter(t => !t.completedAt) : rootsFor(r.id);
+}
+
+// Open tasks as they appear in the current view, top to bottom.
+const visibleOpen = () => viewRoots().flatMap(function walk(t) {
   return [t, ...(t.collapsed ? [] : childrenOf(t.id).filter(c => !c.completedAt).flatMap(walk))];
 });
 
-// The task the add row nests under with Tab, and its ancestors, root first:
-// the task just added from the add row, or else the last one in the list.
-function nestChain(catId) {
-  const open = visibleOpen(catId);
+// The task the add row nests under with Tab, and its ancestors up to the top
+// of the view, top first: the task just added from the add row, or else the
+// last one in the list.
+function nestChain() {
+  const open = visibleOpen();
   let t = open.find(t => t.id === lastAddedId) || open.at(-1);
   const chain = [];
-  for (; t; t = store.find(t.parentId)) chain.unshift(t);
+  for (; t && t !== focused(); t = store.find(t.parentId)) chain.unshift(t);
   return chain;
 }
 
@@ -213,7 +233,7 @@ function renderTasks(main, catId) {
   const done = finishedRoots(catId);
 
   if (!categories.some(c => c.id === draft.categoryId)) draft.categoryId = categories[0]?.id ?? null;
-  if (draft.parentId && !visibleOpen(catId).some(t => t.id === draft.parentId)) draft.parentId = null;
+  if (draft.parentId && !visibleOpen().some(t => t.id === draft.parentId)) draft.parentId = null;
 
   main.innerHTML = `
     <div class="page">
@@ -247,18 +267,62 @@ function renderTasks(main, catId) {
     </div>`;
 }
 
-// A task row followed by its open subtasks (unless collapsed), the inline
-// "Add a subtask" input when open, and its finished subtasks (folded into a
-// stack when there are many).
-function taskTree(t, depth, showCat) {
-  let html = taskRow(t, depth, showCat);
-  const kids = t.collapsed ? [] : childrenOf(t.id);
+// A task row followed by its subtasks, unless collapsed.
+const taskTree = (t, depth, showCat) => taskRow(t, depth, showCat) + (t.collapsed ? '' : subtaskRows(t, depth + 1));
+
+// A task's open subtasks, the inline "Add a subtask" input when open, and its
+// finished subtasks (folded into a stack when there are many).
+function subtaskRows(t, depth) {
+  const kids = childrenOf(t.id);
   const done = kids.filter(c => c.completedAt);
-  html += kids.filter(c => !c.completedAt).map(c => taskTree(c, depth + 1, false)).join('');
-  if (subDraft?.parentId === t.id) html += subAddRow(depth + 1);
-  if (done.length > SUBS_DONE_SHOWN) html += subsDoneStack(t.id, done, depth + 1);
-  if (!subsDoneHidden(t.id, done.length)) html += done.map(c => taskTree(c, depth + 1, false)).join('');
+  let html = kids.filter(c => !c.completedAt).map(c => taskTree(c, depth, false)).join('');
+  if (subDraft?.parentId === t.id) html += subAddRow(depth);
+  if (done.length > SUBS_DONE_SHOWN) html += subsDoneStack(t.id, done, depth);
+  if (!subsDoneHidden(t.id, done.length)) html += done.map(c => taskTree(c, depth, false)).join('');
   return html;
+}
+
+// A task full screen: its subtasks fill the page and the sidebar is hidden.
+// The breadcrumbs lead back up; Esc or the collapse button go back to where
+// it was opened from.
+function renderFocus(main, t) {
+  if (draft.parentId && !visibleOpen().some(x => x.id === draft.parentId)) draft.parentId = null;
+  const up = [];
+  for (let p = store.find(t.parentId); p; p = store.find(p.parentId)) up.unshift(p);
+  const subs = store.descendants(t.id);
+
+  main.innerHTML = `
+    <div class="page focus" data-id="${t.id}">
+      <nav class="crumbs">
+        <a href="#/c/${t.categoryId}">${icon('tag')} ${esc(categoryName(t.categoryId))}</a>
+        ${up.map(p => `<span class="sep">/</span><a href="#/t/${p.id}">${fmtTitle(p.title, false)}</a>`).join('')}
+      </nav>
+      <div class="view-head">
+        <h1 class="${t.completedAt ? 'done' : ''}">${fmtTitle(t.title)}</h1>
+        <span class="actions">
+          <span class="count" title="Subtasks finished">${subs.filter(s => s.completedAt).length}/${subs.length}</span>
+          <button class="ghost icon" data-act="edit" title="Details">${icon('pencil')}</button>
+          <button class="ghost icon" data-act="unfocus" title="Exit full screen (Esc)">${icon('minimize')}</button>
+        </span>
+      </div>
+
+      ${t.notes ? `<div class="cat-notes rich" data-act="edit" title="Click to edit">${mdToHtml(t.notes)}</div>` : ''}
+
+      <ul class="tasks">${subtaskRows(t, 0)}</ul>
+
+      ${addRow(t.categoryId)}
+    </div>`;
+}
+
+function openFocus(id) {
+  if (!focused()) back = { hash: location.hash || '#/all', scroll: $('#view').scrollTop };
+  location.hash = `#/t/${id}`;
+}
+
+function leaveFocus() {
+  const to = back ?? { hash: `#/c/${focused().categoryId}`, scroll: 0 };
+  nextScroll = to.scroll;
+  location.hash = to.hash;
 }
 
 // Many finished subtasks fold into a stack of cards, the latest one on top;
@@ -303,7 +367,8 @@ function taskRow(t, depth, showCat) {
       ${t.completedAt ? '' : `
       <button class="ghost icon small reveal" data-act="progress" title="${inProgress(t) ? 'Stop progress' : 'Start progress'}">${icon(inProgress(t) ? 'pause' : 'play')}</button>`}
       <button class="ghost icon small reveal" data-act="add-sub" title="Add subtask">${icon('list-plus')}</button>
-      ${depth ? `<button class="ghost icon small reveal" data-act="promote" title="Convert to main task">${icon('promote')}</button>` : ''}
+      ${subs.length && !t.completedAt ? `<button class="ghost icon small reveal" data-act="focus" title="Open full screen">${icon('maximize')}</button>` : ''}
+      ${t.parentId ? `<button class="ghost icon small reveal" data-act="promote" title="Convert to main task">${icon('promote')}</button>` : ''}
       <button class="ghost icon small reveal" data-act="copy" title="Copy as Markdown">${icon('copy')}</button>
       <button class="ghost icon small reveal" data-act="edit" title="Details">${icon('pencil')}</button>
       <button class="ghost icon small reveal danger" data-act="delete" title="Delete">${icon('trash')}</button>
@@ -320,17 +385,19 @@ function subAddRow(depth) {
 }
 
 // Tab nests the new task under the task above it, Shift+Tab moves it back out.
+// In a task's full-screen view, new tasks are its subtasks.
 function addRow(catId) {
   const parent = store.find(draft.parentId);
   let depth = 0;
-  for (let t = parent; t; t = store.find(t.parentId)) depth++;
-  const canNest = nestChain(catId).length > depth;
+  for (let t = parent; t && t !== focused(); t = store.find(t.parentId)) depth++;
+  const canNest = nestChain().length > depth;
+  const sub = parent || focused();
 
   return `
     <form id="form-task" class="add-row ${parent ? 'nested' : ''}" autocomplete="off" style="--depth: ${depth}">
       ${icon(parent ? 'corner' : 'plus')}
-      <input id="add-title" name="title" placeholder="${parent ? 'Add a subtask' : 'Add a task'}" maxlength="500"
-        value="${esc(draft.title)}" aria-label="${parent ? 'New subtask' : 'New task'}">
+      <input id="add-title" name="title" placeholder="${sub ? 'Add a subtask' : 'Add a task'}" maxlength="500"
+        value="${esc(draft.title)}" aria-label="${sub ? 'New subtask' : 'New task'}">
       <div class="extras">
         ${parent ? `
         <button type="button" class="chip parent" data-act="draft-unnest" title="Subtask of “${esc(parent.title)}”. Click or press Shift+Tab to move it out">
@@ -452,10 +519,10 @@ function startRename(span) {
     e.preventDefault();
     let parentId;
     if (e.shiftKey) {
-      if (!t.parentId) return finish(true);
+      if (!t.parentId || t.parentId === focused()?.id) return finish(true);
       parentId = store.find(t.parentId).parentId || null;
     } else {
-      const siblings = t.parentId ? childrenOf(t.parentId) : rootsFor(route().id);
+      const siblings = t.parentId ? childrenOf(t.parentId) : viewRoots();
       const prev = siblings[siblings.findIndex(s => s.id === id) - 1];
       if (!prev) return finish(true);
       parentId = prev.id;
@@ -633,7 +700,7 @@ async function importMarkdown(file) {
 // can be typed in a row.
 function addFromDraft() {
   const title = draft.title.trim();
-  const parent = store.find(draft.parentId);
+  const parent = store.find(draft.parentId) || focused();
   const catId = parent?.categoryId || route().id || draft.categoryId;
   if (!title || !catId) return;
 
@@ -647,7 +714,7 @@ function addFromDraft() {
 // Move the add row one level in (nest under the next task of nestChain) or
 // out. Returns false if it can't move.
 function nestDraft(inward) {
-  const chain = nestChain(route().id);
+  const chain = nestChain();
   const i = chain.findIndex(t => t.id === draft.parentId);
   const next = inward ? chain[i + 1] : draft.parentId && chain[i - 1] || null;
   if (inward ? !next : !draft.parentId) return false;
@@ -669,7 +736,16 @@ function addSubFromDraft() {
 }
 
 function bind() {
+  // Esc leaves a task's full-screen view, unless it's for something else:
+  // typing, a dialog or a menu.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !focused() || e.defaultPrevented) return;
+    if (e.target.closest('input, textarea, [contenteditable], dialog') || document.querySelector(':popover-open')) return;
+    leaveFocus();
+  });
+
   window.addEventListener('hashchange', () => {
+    if (!focused()) back = null;
     // Close the sidebar overlay on mobile after navigating.
     $('[data-sidebar-layout]').removeAttribute('data-sidebar-open');
     draft.title = '';
@@ -677,6 +753,8 @@ function bind() {
     subDraft = null;
     focusId = 'add-title';
     render();
+    $('#view').scrollTop = nextScroll ?? 0;
+    nextScroll = null;
   });
 
   $('#form-category').addEventListener('submit', e => {
@@ -712,7 +790,7 @@ function bind() {
         e.preventDefault();
       } else if (e.key === 'Escape') {
         if (draft.title) draft.title = e.target.value = '';
-        else nestDraft(false);
+        else if (!nestDraft(false) && focused()) leaveFocus();
       }
     }
 
@@ -780,9 +858,9 @@ function bind() {
   });
 
   main.addEventListener('click', async e => {
-    // Links in titles and category notes open in the browser instead of
-    // starting an edit.
-    const a = e.target.closest('.title a, .cat-notes a');
+    // Links in titles and notes open in the browser instead of starting an
+    // edit.
+    const a = e.target.closest('.title a, .cat-notes a, h1 a');
     if (a) {
       e.preventDefault();
       store.openLink(a.href);
@@ -790,7 +868,8 @@ function bind() {
     }
     const el = e.target.closest('[data-act]');
     if (!el) return;
-    const id = el.closest('.task')?.dataset.id;
+    // The task a control belongs to: its row, or the full-screen view's task.
+    const id = el.closest('.task, .page[data-id]')?.dataset.id;
 
     switch (el.dataset.act) {
       case 'rename':
@@ -848,6 +927,14 @@ function bind() {
 
       case 'progress':
         store.updateTask(id, { startedAt: inProgress(store.find(id)) ? null : new Date().toISOString() });
+        break;
+
+      case 'focus':
+        openFocus(id);
+        break;
+
+      case 'unfocus':
+        leaveFocus();
         break;
 
       case 'add-sub':

@@ -9,6 +9,7 @@ It runs as a Linux desktop app or as an installable PWA.
 - Priorities (high, medium, low) and due dates
 - Subtasks, nested as deep as you like
 - Drag and drop to put tasks and subtasks in your own order
+- Open a task with many subtasks full screen
 - Mark tasks you've started as **In progress**
 - Finished tasks move to the Archive, grouped by the day they were finished. You can reopen them
 - Notes with basic formatting: bold, italic, code, lists and links, for tasks and for each category
@@ -135,6 +136,7 @@ Esc when you're done. On touch screens, this icon is always shown.
 | Collapse or expand subtasks | Click the `2/5` progress chip next to the parent task |
 | Make a task a subtask of the one above it | Click its title to rename it, then press **Tab** |
 | Move a subtask up a level | Click its title, then press **Shift+Tab** |
+| Open a task full screen | Hover over a task that has subtasks and click the expand icon (two outward arrows). The task becomes the page heading with its notes, its subtasks fill the page and the sidebar folds away. New tasks you add there are its subtasks, and you can open a subtask full screen in turn; the links above the heading lead back up. Click the collapse icon or press **Esc** to go back to where you were |
 | Make a subtask a main task | Hover over it and click the corner-arrow icon. It becomes a top-level task in the same category, keeping its own subtasks. The snackbar offers **Undo** |
 | Finish a subtask | Tick it. It moves below its parent's open subtasks, struck through, and the progress chip updates. Once more than two are finished, they fold into a stack of cards showing the latest one |
 | See finished subtasks | Click the stack to expand it. Click **Show less** (in the same spot) to fold it again |
