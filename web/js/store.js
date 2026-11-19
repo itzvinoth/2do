@@ -180,9 +180,23 @@ export function updateTask(id, fields) {
   commit();
 }
 
+// Deleting a task deletes its subtasks too. Returns them all, for undo.
 export function deleteTask(id) {
   const gone = new Set([id, ...descendants(id).map(t => t.id)]);
+  const removed = state.tasks.filter(t => gone.has(t.id));
   state.tasks = state.tasks.filter(t => !gone.has(t.id));
+  commit();
+  return removed;
+}
+
+// Puts deleted tasks back. One whose parent has since been deleted too comes
+// back as a top-level task.
+export function restoreTasks(list) {
+  const ids = new Set(list.map(t => t.id));
+  for (const t of list) {
+    if (t.parentId && !ids.has(t.parentId) && !find(t.parentId)) t.parentId = null;
+  }
+  state.tasks.push(...list);
   commit();
 }
 

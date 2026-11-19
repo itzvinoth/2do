@@ -364,15 +364,32 @@ function taskRow(t, depth, showCat) {
       ${showCat ? `<span class="cat">${esc(categoryName(t.categoryId))}</span>` : ''}
       ${dueChip(t.due, 'edit-due')}
       ${priorityPicker(t.id, t.priority, 'set-priority')}
-      ${t.completedAt ? '' : `
-      <button class="ghost icon small reveal" data-act="progress" title="${inProgress(t) ? 'Stop progress' : 'Start progress'}">${icon(inProgress(t) ? 'pause' : 'play')}</button>`}
       <button class="ghost icon small reveal" data-act="add-sub" title="Add subtask">${icon('list-plus')}</button>
-      ${subs.length && !t.completedAt ? `<button class="ghost icon small reveal" data-act="focus" title="Open full screen">${icon('maximize')}</button>` : ''}
-      ${t.parentId ? `<button class="ghost icon small reveal" data-act="promote" title="Convert to main task">${icon('promote')}</button>` : ''}
-      <button class="ghost icon small reveal" data-act="copy" title="Copy as Markdown">${icon('copy')}</button>
       <button class="ghost icon small reveal" data-act="edit" title="Details">${icon('pencil')}</button>
-      <button class="ghost icon small reveal danger" data-act="delete" title="Delete">${icon('trash')}</button>
+      ${taskMenu(t, subs.length)}
     </li>`;
+}
+
+// Everything else you can do with a task, with labels, in its ⋯ menu. On
+// touch screens this menu is the only control shown, so it repeats the two
+// shown on hover.
+function taskMenu(t, nSubs) {
+  const item = (act, ic, label, cls = '') =>
+    `<button type="button" role="menuitem" data-act="${act}" class="${cls}">${icon(ic)} ${label}</button>`;
+  const open = !t.completedAt;
+  return `
+    <ot-dropdown class="more-menu">
+      <button type="button" class="ghost icon small reveal more" popovertarget="menu-${t.id}" title="More actions">${icon('more')}</button>
+      <menu popover id="menu-${t.id}">
+        ${item('edit', 'pencil', 'Details')}
+        ${item('add-sub', 'list-plus', 'Add subtask')}
+        ${open ? item('progress', inProgress(t) ? 'pause' : 'play', inProgress(t) ? 'Stop progress' : 'Start progress') : ''}
+        ${nSubs && open ? item('focus', 'maximize', 'Open full screen') : ''}
+        ${t.parentId ? item('promote', 'promote', 'Convert to main task') : ''}
+        ${item('copy', 'copy', 'Copy as Markdown')}
+        ${item('delete', 'trash', 'Delete', 'danger')}
+      </menu>
+    </ot-dropdown>`;
 }
 
 function subAddRow(depth) {
@@ -736,6 +753,13 @@ function addSubFromDraft() {
 }
 
 function bind() {
+  // Picking a menu item closes its menu (the menus in task rows close anyway
+  // when the list re-renders, but not every action re-renders it).
+  document.addEventListener('click', e => {
+    const menu = e.target.closest('[role=menuitem]')?.closest('[popover]');
+    if (menu?.matches(':popover-open')) menu.hidePopover();
+  });
+
   // Esc leaves a task's full-screen view, unless it's for something else:
   // typing, a dialog or a menu.
   document.addEventListener('keydown', e => {
@@ -977,15 +1001,11 @@ function bind() {
         toastAction('Task reopened.', 'Undo', () => store.completeTask(id));
         break;
 
+      // No confirmation: the snackbar's Undo puts it back.
       case 'delete': {
-        const t = store.find(id);
-        const n = store.descendants(id).length;
-        const { action } = await ask({
-          title: 'Delete task?',
-          message: `"${t.title}"${n ? ` and its ${n} subtask(s)` : ''} will be permanently deleted.`,
-          buttons: [{ label: 'Delete', value: 'ok', variant: 'danger' }],
-        });
-        if (action === 'ok') store.deleteTask(id);
+        const removed = store.deleteTask(id);
+        const n = removed.length - 1;
+        toastAction(n ? `Task and ${n} subtask(s) deleted.` : 'Task deleted.', 'Undo', () => store.restoreTasks(removed));
         break;
       }
 
@@ -1177,7 +1197,6 @@ async function init() {
     const b = e.target.closest('[data-theme]');
     if (!b) return;
     setTheme(b.dataset.theme);
-    $('#theme-menu').hidePopover();
   });
   const askUrl = async () => {
     const { action, value } = await ask({

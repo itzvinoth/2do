@@ -138,8 +138,8 @@ main {
   padding: var(--space-8) var(--space-6) var(--space-16);
 }
 
-/* Drag handles on both edges of the page: a faint grip that stays in the
-   middle of the screen, and a full-height line on hover. */
+/* Drag handles on both edges of the page: on hover, a grip that stays in the
+   middle of the screen and a full-height line. */
 .page-resize {
   position: absolute;
   inset-block: 0;
@@ -159,7 +159,6 @@ main {
     height: 2.5rem;
     margin-inline: auto;
     border-radius: var(--radius-full);
-    background-color: var(--border);
     transition: background-color var(--transition-fast);
   }
 
@@ -464,6 +463,10 @@ ot-dropdown menu[popover] {
   }
 
   /* A ticked subtask stays in place, struck through. */
+  &.checked > input[type=checkbox] {
+    opacity: 0.5;
+  }
+
   &.checked > .title {
     color: var(--muted-foreground);
     text-decoration: line-through;
@@ -618,6 +621,19 @@ ot-dropdown menu[popover] {
 
 @media (hover: none) {
   .reveal {
+    opacity: 1;
+  }
+}
+
+/* Touch screens can't hover, and narrow windows have no room, so open tasks
+   show just their ⋯ menu, which has everything else (including priority and due
+   date, through Details). */
+@media (hover: none), (max-width: 768px) {
+  .task:not(.done) .reveal:not(.more) {
+    display: none;
+  }
+
+  .task .more {
     opacity: 1;
   }
 }
@@ -970,6 +986,40 @@ dialog {
 
   .task .cat {
     display: none;
+  }
+
+  /* Each row is the title (wrapping instead of being cut off) between its
+     checkbox and ⋯ menu, with its chips on a second line under the title.
+     ::after breaks the line and ::before indents it. */
+  .task:not(.sub-stack, .sub-add) {
+    flex-wrap: wrap;
+    row-gap: 0;
+
+    .title {
+      flex: 1 1 0;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    > * {
+      order: 2;
+    }
+
+    > :is(input[type=checkbox], .done-mark, .title, .title-edit, .more-menu) {
+      order: 0;
+    }
+
+    &::after {
+      content: '';
+      order: 1;
+      flex-basis: 100%;
+    }
+
+    &::before {
+      content: '';
+      order: 2;
+      width: 1rem;
+    }
   }
 
   :root {

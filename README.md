@@ -105,18 +105,20 @@ optional settings:
 
 Press **Esc** to clear the input.
 
-**Working with tasks.** Hover over a task to see its controls.
+**Working with tasks.** Hover over a task to see its controls: the add-subtask icon (lines with a +), the pencil
+for details, and the ⋮ menu with everything else, labelled. On touch screens and in narrow windows only the ⋮ menu is
+shown; it also has **Details** and **Add subtask**, and the dates and flags move to a second line under the title.
 
 | Action | How |
 |---|---|
 | Rename | Click the title, edit it, then press Enter (or Esc to cancel) |
-| Mark as in progress | Click the ▶ icon. The task gets a blue **In progress** chip and moves to the top of its list. Click ⏸ to stop. Hover over the chip to see when you started |
+| Mark as in progress | ⋮ menu, **Start progress**. The task gets a blue **In progress** chip. **Stop progress** in the same menu stops it. Hover over the chip to see when you started |
 | Change priority | Click the flag. Red is high, amber is medium, and low shows no flag |
 | Change due date | Click the date (or the calendar icon) to open the task dialog with the date selected. Overdue dates turn red and today's turn amber |
-| Notes, or move to another category | Pencil icon. Notes have a small formatting toolbar: bold, italic, strikethrough, code, bulleted and numbered lists, and links. Shortcuts: Ctrl+B, Ctrl+I, Ctrl+K for a link, Tab / Shift+Tab to indent a list item. Ctrl+click a link to open it. Pasted text comes in unformatted |
-| Copy | Two-squares icon. Copies the task and all its subtasks as a Markdown checklist, ready to paste into notes or chat, or to import elsewhere (see [Import file format](#import-file-format-md)). Also works in the Archive |
-| Delete | Trash icon |
-| Reorder | Drag the dotted grip that appears to the left of the checkbox. A line shows where the task will land; its subtasks move with it. Tasks move among the tasks at the same level (to nest or un-nest, use Tab / Shift+Tab or **Convert to main task**). With the keyboard, Tab to the grip and press ↑ or ↓ |
+| Notes, or move to another category | Pencil icon, or **Details** in the ⋮ menu. Notes have a small formatting toolbar: bold, italic, strikethrough, code, bulleted and numbered lists, and links. Shortcuts: Ctrl+B, Ctrl+I, Ctrl+K for a link, Tab / Shift+Tab to indent a list item. Ctrl+click a link to open it. Pasted text comes in unformatted |
+| Copy | ⋮ menu, **Copy as Markdown**. Copies the task and all its subtasks as a Markdown checklist, ready to paste into notes or chat, or to import elsewhere (see [Import file format](#import-file-format-md)). Also works in the Archive (the two-squares icon there) |
+| Delete | ⋮ menu, **Delete**, or the trash icon in the Archive. Its subtasks are deleted too. There's no confirmation; the snackbar offers **Undo** |
+| Reorder | Drag the dotted grip that appears to the left of the checkbox. A line shows where the task will land; its subtasks move with it. Tasks move among the tasks at the same level (to nest or un-nest, use Tab / Shift+Tab or **Convert to main task**). With the keyboard, Tab to the grip and press ↑ or ↓. Not available on touch screens or in narrow windows |
 
 Tasks stay in the order you put them in, and new ones are added at the bottom. Priority and due dates don't move
 them. `` `Backticks` `` in a title are shown as inline code, and links are clickable: paste a
@@ -128,16 +130,16 @@ moves in under it. Type subtasks and press Enter after each; the row stays at th
 under the subtask you just added, and **Shift+Tab** (or Esc on an empty row) to move back out. A chip in the row shows
 which task you're adding to; click its × to go back to the top level.
 
-You can also hover over a task and click the add-subtask icon (lines with a +) to type subtasks right below it. Press
-Esc when you're done. On touch screens, this icon is always shown.
+You can also hover over a task and click the add-subtask icon (lines with a +), or pick **Add subtask** in its ⋮
+menu, to type subtasks right below it. Press Esc when you're done.
 
 | Action | How |
 |---|---|
 | Collapse or expand subtasks | Click the `2/5` progress chip next to the parent task |
 | Make a task a subtask of the one above it | Click its title to rename it, then press **Tab** |
 | Move a subtask up a level | Click its title, then press **Shift+Tab** |
-| Open a task full screen | Hover over a task that has subtasks and click the expand icon (two outward arrows). The task becomes the page heading with its notes, its subtasks fill the page and the sidebar folds away. New tasks you add there are its subtasks, and you can open a subtask full screen in turn; the links above the heading lead back up. Click the collapse icon or press **Esc** to go back to where you were |
-| Make a subtask a main task | Hover over it and click the corner-arrow icon. It becomes a top-level task in the same category, keeping its own subtasks. The snackbar offers **Undo** |
+| Open a task full screen | ⋮ menu of a task that has subtasks, **Open full screen**. The task becomes the page heading with its notes, its subtasks fill the page and the sidebar folds away. New tasks you add there are its subtasks, and you can open a subtask full screen in turn; the links above the heading lead back up. Click the collapse icon or press **Esc** to go back to where you were |
+| Make a subtask a main task | ⋮ menu, **Convert to main task**. It becomes a top-level task in the same category, keeping its own subtasks. The snackbar offers **Undo** |
 | Finish a subtask | Tick it. It moves below its parent's open subtasks, struck through, and the progress chip updates. Once more than two are finished, they fold into a stack of cards showing the latest one |
 | See finished subtasks | Click the stack to expand it. Click **Show less** (in the same spot) to fold it again |
 | Reopen a subtask | Untick it. This also reopens its parent if the parent was finished |
@@ -163,7 +165,8 @@ category's page; click them to edit, or click a link in them to open it.
 system's light or dark mode), Paper, Sage, Mist, Blush, Lavender and Peach (light), or Slate, Forest and Dusk (dark).
 The choice is remembered on this computer; it isn't part of your exported tasks.
 
-**Import and export.** These are the two icons at the top right: the arrow pointing down into a tray imports a `.md` file, and the arrow pointing up out of a tray exports one. Hover over either to see its label.
+**Import and export.** Click the ⋮ icon at the top right and pick **Import from Markdown…** or **Export to
+Markdown…**.
 
 ## Import file format (.md)
 

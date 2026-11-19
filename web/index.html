@@ -68,8 +68,13 @@
       <button data-sidebar-toggle class="ghost icon" aria-label="Toggle sidebar"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
       <a href="#/all" class="brand unstyled"><img src="icons/icon.svg" alt="" width="24" height="24"> 2do</a>
       <span class="spacer"></span>
-      <button class="ghost icon" id="btn-import" data-tooltip-placement="bottom" title="Import from .md"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg></button>
-      <button class="ghost icon" id="btn-export" data-tooltip-placement="bottom" title="Export to .md"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg></button>
+      <ot-dropdown>
+        <button class="ghost icon" popovertarget="file-menu" data-tooltip-placement="bottom" title="Import or export"><svg class="i" aria-hidden="true"><use href="#i-more"/></svg></button>
+        <menu popover id="file-menu">
+          <button role="menuitem" id="btn-import"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg> Import from Markdown…</button>
+          <button role="menuitem" id="btn-export"><svg class="i" aria-hidden="true"><use href="#i-upload"/></svg> Export to Markdown…</button>
+        </menu>
+      </ot-dropdown>
       <ot-dropdown>
         <button class="ghost icon" id="btn-theme" popovertarget="theme-menu" data-tooltip-placement="bottom" title="Color theme"><svg class="i" aria-hidden="true"><use href="#i-palette"/></svg></button>
         <menu popover id="theme-menu" class="theme-menu"></menu>
